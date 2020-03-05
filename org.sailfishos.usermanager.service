@@ -1,0 +1,6 @@
+[D-BUS Service]
+Interface=org.sailfishos.usermanager
+Name=org.sailfishos.usermanager
+Exec=/bin/false
+User=root
+SystemdService=dbus-org.sailfishos.usermanager.service

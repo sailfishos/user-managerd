@@ -1,0 +1,33 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.sailfishos.usermanager">
+    <method name="users">
+        <arg direction="out" type="a(ssu)" name="users"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;SailfishUserManagerEntry&gt;"/>
+    </method>
+    <method name="addUser">
+        <arg direction="in" type="s" name="full_name"/>
+        <arg direction="out" type="u" name="uid"/>
+    </method>
+    <signal name="userAdded">
+        <arg type="(ssu)" name="user"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="SailfishUserManagerEntry"/>
+    </signal>
+    <method name="removeUser">
+        <arg direction="in" type="u" name="uid"/>
+    </method>
+    <signal name="userRemoved">
+        <arg type ="u" name="uid"/>
+    </signal>
+    <method name="modifyUser">
+        <arg direction="in" type="u" name="uid"/>
+        <arg direction="in" type="s" name="new_full_name"/>
+    </method>
+    <signal name="userModified">
+        <arg type ="u" name="uid"/>
+        <arg type ="s" name="new_full_name"/>
+    </signal>
+  </interface>
+</node>
+
