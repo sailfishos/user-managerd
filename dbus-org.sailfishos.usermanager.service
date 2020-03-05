@@ -1,0 +1,7 @@
+[Unit]
+Description=Sailfish user manager service
+
+[Service]
+Type=dbus
+BusName=org.sailfishos.usermanager
+ExecStart=/usr/bin/user-managerd
