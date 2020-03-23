@@ -43,6 +43,8 @@ public slots:
     void modifyUser(uint uid, const QString &new_name);
 
 private:
+    bool hasAccessRights(uint uid_to_modify);
+
     QTimer *m_timer;
     LibUserHelper *m_lu;
 };
