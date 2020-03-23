@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sailfishaccesscontrol.h>
 
 const char *USER_GROUP = "users";
 const char *GROUPS_USER = "USER_GROUPS";
@@ -31,6 +32,11 @@ const auto SKEL_DIR = QStringLiteral("/etc/skel");
 const auto USER_HOME = QStringLiteral("/home/%1");
 const int HOME_MODE = 0700;
 const int QUIT_TIMEOUT = 60 * 1000; // One minute quit timeout
+const int MAX_RESERVED_UID = 99999;
+const int OWNER_USER_UID = 100000;
+
+static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
+              "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
 
 SailfishUserManager::SailfishUserManager(QObject *parent) : QObject(parent), m_lu(new LibUserHelper())
 {
@@ -162,6 +168,10 @@ bool SailfishUserManager::makeHome(const QString &user)
 
 uint SailfishUserManager::addUser(const QString &name)
 {
+    // When adding user there is no uid to modify, use special value instead
+    if (!hasAccessRights(SAILFISH_UNDEFINED_UID))
+        return 0;
+
     m_timer->start();
 
     if (name.isEmpty()) {
@@ -230,8 +240,15 @@ uint SailfishUserManager::addUser(const QString &name)
 
 void SailfishUserManager::removeUser(uint uid)
 {
-    m_timer->start();
+    if (!hasAccessRights(uid))
+        return;
 
+    if (uid == OWNER_USER_UID) {
+        sendErrorReply(QDBusError::InvalidArgs, "Can not remove device owner");
+        return;
+    }
+
+    m_timer->start();
 
     if (!removeHome(uid)) {
         sendErrorReply(QDBusError::Failed, "Removing user home failed");
@@ -248,6 +265,9 @@ void SailfishUserManager::removeUser(uint uid)
 
 void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
 {
+    if (!hasAccessRights(uid))
+        return;
+
     m_timer->start();
 
     if (!m_lu->modifyUser(uid, new_name)) {
@@ -275,4 +295,56 @@ bool SailfishUserManager::removeHome(uint uid)
         return false;
 
     return removeDir(home);
+}
+
+/* Check that calling D-Bus client is allowed to make the operation
+ *
+ * uid_to_modify is uid of the user that is going to be changed or removed.
+ * Special value SAILFISH_UNDEFINED_UID can be used to denote non-existing user
+ * that does not match to calling process' user but is in the valid range.
+ */
+bool SailfishUserManager::hasAccessRights(uint uid_to_modify) {
+    if (!calledFromDBus()) {
+        // Local function calls are always allowed
+        return true;
+    }
+
+    // Test that uid is in the valid range
+    if (uid_to_modify <= MAX_RESERVED_UID) {
+        // Users below MAX_RESERVED_UID are system users and can not be modified with manager
+        auto message = QStringLiteral("UID %1 and below can not be modified").arg(MAX_RESERVED_UID);
+        qCWarning(lcSUM) << "Invalid arg:" << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
+        return false;
+    }
+
+    // Get the PID of the calling process
+    pid_t pid = connection().interface()->servicePid(message().service());
+
+    // The /proc/<pid> directory is owned by EUID:EGID of the process
+    QFileInfo info(QString("/proc/%1").arg(pid));
+    uid_t uid = info.ownerId();
+
+    if (uid == 0) {
+        // Root is always allowed to make changes
+        return true;
+    }
+
+    if (info.group() != QStringLiteral("privileged")) {
+        // Non-privileged applications are not allowed
+        auto message = QStringLiteral("PID %1 is not in privileged group").arg(pid);
+        qCWarning(lcSUM) << "Access denied:" << message;
+        sendErrorReply(QDBusError::AccessDenied, message);
+        return false;
+    }
+
+    if (!sailfish_access_control_hasgroup(uid, "sailfish-system") && uid != uid_to_modify) {
+        // Users in sailfish-system can change any user, other users can only modify themselves
+        auto message = QStringLiteral("UID %1 is not allowed to modify UID %2").arg(uid).arg(uid_to_modify);
+        qCWarning(lcSUM) << "Access denied:" << message;
+        sendErrorReply(QDBusError::AccessDenied, message);
+        return false;
+    }
+
+    return true;
 }
