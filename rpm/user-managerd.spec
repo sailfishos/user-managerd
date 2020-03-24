@@ -8,6 +8,7 @@ URL: https://github.com/sailfishos/user-management-daemon.git
 BuildRequires: pkgconfig(Qt5Core)
 BuildRequires: pkgconfig(Qt5DBus)
 BuildRequires: pkgconfig(libuser)
+BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
 %description
