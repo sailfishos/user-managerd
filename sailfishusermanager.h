@@ -16,6 +16,8 @@
 
 class QTimer;
 class LibUserHelper;
+class QDBusPendingCallWatcher;
+class QDBusInterface;
 
 class SailfishUserManager : public QObject, protected QDBusContext
 {
@@ -23,6 +25,7 @@ class SailfishUserManager : public QObject, protected QDBusContext
 
 public:
     explicit SailfishUserManager(QObject *parent = nullptr);
+    ~SailfishUserManager();
 
 private:
     bool addUserToGroups(const QString &user);
@@ -35,18 +38,32 @@ signals:
     void userAdded(const SailfishUserManagerEntry &user);
     void userRemoved(uint uid);
     void userModified(uint uid, const QString &new_name);
+    void currentUserChanged(uint uid);
+    void currentUserChangeFailed(uint uid);
+    void aboutToChangeCurrentUser(uint uid);
 
 public slots:
     QList<SailfishUserManagerEntry> users();
     uint addUser(const QString &name);
     void removeUser(uint uid);
     void modifyUser(uint uid, const QString &new_name);
+    void setCurrentUser(uint uid);
+    uint currentUser();
+
+private slots:
+    void userServiceStop(QDBusPendingCallWatcher *replyWatcher);
+    void autologinServiceStop(QDBusPendingCallWatcher *replyWatcher);
+    void autologinServiceStart(QDBusPendingCallWatcher *replyWatcher);
 
 private:
-    bool hasAccessRights(uint uid_to_modify);
+    bool checkAccessRights(uint uid_to_modify);
+    uid_t checkCallerUid();
 
     QTimer *m_timer;
     LibUserHelper *m_lu;
+    uid_t m_switchUser;
+    uid_t m_currentUid;
+    QDBusInterface *m_systemd;
 };
 
 #endif // SAILFISHUSERMANAGER_H
