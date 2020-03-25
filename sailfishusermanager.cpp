@@ -24,6 +24,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sailfishaccesscontrol.h>
+#include <systemd/sd-login.h>
+#include <qmcecallstate.h>
 
 const char *USER_GROUP = "users";
 const char *GROUPS_USER = "USER_GROUPS";
@@ -34,11 +36,24 @@ const int HOME_MODE = 0700;
 const int QUIT_TIMEOUT = 60 * 1000; // One minute quit timeout
 const int MAX_RESERVED_UID = 99999;
 const int OWNER_USER_UID = 100000;
+const auto SYSTEMD_MANAGER_SERVICE = QStringLiteral("org.freedesktop.systemd1");
+const auto SYSTEMD_MANAGER_PATH = QStringLiteral("/org/freedesktop/systemd1");
+const auto SYSTEMD_MANAGER_INTERFACE = QStringLiteral("org.freedesktop.systemd1.Manager");
+const auto SYSTEMD_MANAGER_START = QStringLiteral("StartUnit");
+const auto SYSTEMD_MANAGER_STOP = QStringLiteral("StopUnit");
+const auto USER_SERVICE = QStringLiteral("user@%1.service");
+const auto SYSTEMD_MANAGER_REPLACE = QStringLiteral("replace");
+const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
 
-SailfishUserManager::SailfishUserManager(QObject *parent) : QObject(parent), m_lu(new LibUserHelper())
+SailfishUserManager::SailfishUserManager(QObject *parent) :
+    QObject(parent),
+    m_lu(new LibUserHelper()),
+    m_switchUser(0),
+    m_currentUid(0),
+    m_systemd(nullptr)
 {
     qDBusRegisterMetaType<SailfishUserManagerEntry>();
     qDBusRegisterMetaType<QList<SailfishUserManagerEntry>>();
@@ -57,6 +72,12 @@ SailfishUserManager::SailfishUserManager(QObject *parent) : QObject(parent), m_l
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, qApp, &QCoreApplication::quit);
     m_timer->start(QUIT_TIMEOUT);
+}
+
+SailfishUserManager::~SailfishUserManager()
+{
+    delete m_lu;
+    m_lu = nullptr;
 }
 
 QList<SailfishUserManagerEntry> SailfishUserManager::users()
@@ -169,14 +190,14 @@ bool SailfishUserManager::makeHome(const QString &user)
 uint SailfishUserManager::addUser(const QString &name)
 {
     // When adding user there is no uid to modify, use special value instead
-    if (!hasAccessRights(SAILFISH_UNDEFINED_UID))
+    if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
         return 0;
 
     m_timer->start();
 
     if (name.isEmpty()) {
         qCWarning(lcSUM) << "Empty name";
-        sendErrorReply(QDBusError::Failed, "Empty name");
+        sendErrorReply(QDBusError::InvalidArgs, "Empty name");
         return 0;
     }
 
@@ -186,7 +207,7 @@ uint SailfishUserManager::addUser(const QString &name)
     int i;
     for (i = 0; i < simplified.length(); i++) {
         if (simplified[i].isLetterOrNumber() && simplified[i] <= 'z')
-            cleanName.append(name[i]);
+            cleanName.append(simplified[i]);
         if (cleanName.length() >= 10)
             break;
     }
@@ -200,33 +221,34 @@ uint SailfishUserManager::addUser(const QString &name)
         user = cleanName + QString::number(i++);
 
     if (QFile::exists(QString(USER_HOME).arg(user))) {
-        qCWarning(lcSUM) << "Home directory already exists";
-        sendErrorReply(QDBusError::Failed, "Home directory already exists");
+        auto message = QStringLiteral("Home directory already exists");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), message);
         return 0;
     }
 
     uint guid = m_lu->addGroup(user);
     if (!guid) {
-        sendErrorReply(QDBusError::Failed, "Creating user group failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), QStringLiteral("Creating user group failed"));
         return 0;
     }
 
     uint uid = m_lu->addUser(user, name, guid);
     if (!uid) {
         m_lu->removeGroup(user);
-        sendErrorReply(QDBusError::Failed, "Adding user failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), QStringLiteral("Adding user failed"));
         return 0;
     }
 
     if (!addUserToGroups(user)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QDBusError::Failed, "Adding user to groups failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("Adding user to groups failed"));
         return 0;
     }
 
     if (!makeHome(user)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QDBusError::Failed, "Creating user home failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), QStringLiteral("Creating user home failed"));
         return 0;
     }
 
@@ -240,7 +262,7 @@ uint SailfishUserManager::addUser(const QString &name)
 
 void SailfishUserManager::removeUser(uint uid)
 {
-    if (!hasAccessRights(uid))
+    if (!checkAccessRights(uid))
         return;
 
     if (uid == OWNER_USER_UID) {
@@ -251,12 +273,12 @@ void SailfishUserManager::removeUser(uint uid)
     m_timer->start();
 
     if (!removeHome(uid)) {
-        sendErrorReply(QDBusError::Failed, "Removing user home failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeRemoveFailed), QStringLiteral("Removing user home failed"));
         return;
     }
 
     if (!m_lu->removeUser(uid)) {
-        sendErrorReply(QDBusError::Failed, "User remove failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), QStringLiteral("User remove failed"));
         return;
     }
 
@@ -265,13 +287,13 @@ void SailfishUserManager::removeUser(uint uid)
 
 void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
 {
-    if (!hasAccessRights(uid))
+    if (!checkAccessRights(uid))
         return;
 
     m_timer->start();
 
     if (!m_lu->modifyUser(uid, new_name)) {
-        sendErrorReply(QDBusError::Failed, "User modify failed");
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("User modify failed"));
         return;
     }
 
@@ -297,25 +319,15 @@ bool SailfishUserManager::removeHome(uint uid)
     return removeDir(home);
 }
 
-/* Check that calling D-Bus client is allowed to make the operation
- *
- * uid_to_modify is uid of the user that is going to be changed or removed.
- * Special value SAILFISH_UNDEFINED_UID can be used to denote non-existing user
- * that does not match to calling process' user but is in the valid range.
+/*
+ * Gets caller uid and checks it has proper rights.
+ * Returns with the uid if ok, otherwise SAILFISH_UDEFINED_UID.
  */
-bool SailfishUserManager::hasAccessRights(uint uid_to_modify) {
+uid_t SailfishUserManager::checkCallerUid()
+{
     if (!calledFromDBus()) {
         // Local function calls are always allowed
-        return true;
-    }
-
-    // Test that uid is in the valid range
-    if (uid_to_modify <= MAX_RESERVED_UID) {
-        // Users below MAX_RESERVED_UID are system users and can not be modified with manager
-        auto message = QStringLiteral("UID %1 and below can not be modified").arg(MAX_RESERVED_UID);
-        qCWarning(lcSUM) << "Invalid arg:" << message;
-        sendErrorReply(QDBusError::InvalidArgs, message);
-        return false;
+        return 0;
     }
 
     // Get the PID of the calling process
@@ -327,7 +339,7 @@ bool SailfishUserManager::hasAccessRights(uint uid_to_modify) {
 
     if (uid == 0) {
         // Root is always allowed to make changes
-        return true;
+        return uid;
     }
 
     if (info.group() != QStringLiteral("privileged")) {
@@ -335,10 +347,33 @@ bool SailfishUserManager::hasAccessRights(uint uid_to_modify) {
         auto message = QStringLiteral("PID %1 is not in privileged group").arg(pid);
         qCWarning(lcSUM) << "Access denied:" << message;
         sendErrorReply(QDBusError::AccessDenied, message);
+        return SAILFISH_UNDEFINED_UID;
+    }
+
+    return uid;
+}
+
+/* Check that calling D-Bus client is allowed to make the operation
+ *
+ * uid_to_modify is uid of the user that is going to be changed or removed.
+ * Special value SAILFISH_UNDEFINED_UID can be used to denote non-existing user
+ * that does not match to calling process' user but is in the valid range.
+ */
+bool SailfishUserManager::checkAccessRights(uint uid_to_modify) {
+    // Test that uid is in the valid range
+    if (uid_to_modify <= MAX_RESERVED_UID) {
+        // Users below MAX_RESERVED_UID are system users and can not be modified with manager
+        auto message = QStringLiteral("UID %1 and below can not be modified").arg(MAX_RESERVED_UID);
+        qCWarning(lcSUM) << "Invalid arg:" << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return false;
     }
 
-    if (!sailfish_access_control_hasgroup(uid, "sailfish-system") && uid != uid_to_modify) {
+    uid_t uid = checkCallerUid();
+    if (uid == SAILFISH_UNDEFINED_UID)
+        return false;
+
+    if (uid && !sailfish_access_control_hasgroup(uid, "sailfish-system") && uid != uid_to_modify) {
         // Users in sailfish-system can change any user, other users can only modify themselves
         auto message = QStringLiteral("UID %1 is not allowed to modify UID %2").arg(uid).arg(uid_to_modify);
         qCWarning(lcSUM) << "Access denied:" << message;
@@ -347,4 +382,130 @@ bool SailfishUserManager::hasAccessRights(uint uid_to_modify) {
     }
 
     return true;
+}
+
+void SailfishUserManager::setCurrentUser(uint uid)
+{
+    if (checkCallerUid() == SAILFISH_UNDEFINED_UID)
+        return;
+
+    if (m_switchUser) {
+        auto message = QStringLiteral("Already switching user");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorBusy), message);
+        return;
+    }
+
+    bool uidFound = false;
+    struct group *grent = getgrnam(USER_GROUP);
+    if (grent) {
+        for (int i = 0; grent->gr_mem[i]; i++) {
+            struct passwd *pw = getpwnam(grent->gr_mem[i]);
+            if (pw && pw->pw_uid == uid) {
+                uidFound = true;
+                break;
+            }
+        }
+    }
+    if (!uidFound) {
+        auto message = QStringLiteral("User not found");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
+        return;
+    }
+
+    m_currentUid = currentUser();
+    if (m_currentUid == SAILFISH_UNDEFINED_UID)
+        return;
+
+    if (m_currentUid == uid) {
+        auto message = QStringLiteral("User already active");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
+        return;
+    }
+
+    QMceCallState callState;
+    if (callState.state() == QMceCallState::Active || callState.state() == QMceCallState::Ringing) {
+        auto message = QStringLiteral("Call active");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(SailfishUserManagerErrorBusy, message);
+        return;
+    }
+
+    emit aboutToChangeCurrentUser(uid);
+
+    m_switchUser = uid;
+    m_timer->start();
+
+    if (!m_systemd)
+        m_systemd = new QDBusInterface(SYSTEMD_MANAGER_SERVICE, SYSTEMD_MANAGER_PATH, SYSTEMD_MANAGER_INTERFACE, QDBusConnection::systemBus());
+
+    // Stop user service
+    QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_STOP, USER_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, &SailfishUserManager::userServiceStop);
+}
+
+void SailfishUserManager::userServiceStop(QDBusPendingCallWatcher *replyWatcher)
+{
+    QDBusPendingReply<QDBusObjectPath> reply = *replyWatcher;
+    if (reply.isError()) {
+        qCWarning(lcSUM) << QStringLiteral("Failed to stop current user session: %1").arg(reply.error().message());
+        emit currentUserChangeFailed(m_switchUser);
+        m_switchUser = 0;
+    } else {
+        // Stop autologin service
+        QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_STOP, AUTOLOGIN_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, &SailfishUserManager::autologinServiceStop);
+    }
+    replyWatcher->deleteLater();
+}
+
+void SailfishUserManager::autologinServiceStop(QDBusPendingCallWatcher *replyWatcher)
+{
+    QDBusPendingReply<QDBusObjectPath> reply = *replyWatcher;
+    if (reply.isError()) {
+        qCWarning(lcSUM) << QStringLiteral("Failed to stop current user autologin: %1").arg(reply.error().message());
+        emit currentUserChangeFailed(m_switchUser);
+        m_switchUser = 0;
+
+        // Try to recover by restarting the old user service
+        m_systemd->asyncCall(SYSTEMD_MANAGER_START, USER_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
+    } else {
+        // Start new autologin service
+        QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_START, AUTOLOGIN_SERVICE.arg(m_switchUser), SYSTEMD_MANAGER_REPLACE);
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, &SailfishUserManager::autologinServiceStart);
+    }
+    replyWatcher->deleteLater();
+}
+
+void SailfishUserManager::autologinServiceStart(QDBusPendingCallWatcher *replyWatcher)
+{
+    QDBusPendingReply<QDBusObjectPath> reply = *replyWatcher;
+    if (reply.isError()) {
+        qCWarning(lcSUM) << QStringLiteral("Failed to start autologin: %1").arg(reply.error().message());
+        emit currentUserChangeFailed(m_switchUser);
+
+        // Try to recover by restarting the old autologin service
+        m_systemd->asyncCall(SYSTEMD_MANAGER_START, AUTOLOGIN_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
+    } else {
+        emit currentUserChanged(m_switchUser);
+    }
+    m_switchUser = 0;
+    replyWatcher->deleteLater();
+}
+
+uint SailfishUserManager::currentUser()
+{
+    uid_t uid;
+    if (sd_seat_get_active("seat0", nullptr, &uid) < 0) {
+        auto message = QStringLiteral("Failed to get current user id");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGetUidFailed), message);
+        return SAILFISH_UNDEFINED_UID;
+    }
+    return uid;
 }

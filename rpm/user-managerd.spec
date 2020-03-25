@@ -9,6 +9,8 @@ BuildRequires: pkgconfig(Qt5Core)
 BuildRequires: pkgconfig(Qt5DBus)
 BuildRequires: pkgconfig(libuser)
 BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
+BuildRequires: pkgconfig(libsystemd)
+BuildRequires: pkgconfig(mce-qt5)
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
 %description
