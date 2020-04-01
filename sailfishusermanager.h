@@ -49,6 +49,9 @@ public slots:
     void modifyUser(uint uid, const QString &new_name);
     void setCurrentUser(uint uid);
     uint currentUser();
+    QStringList usersGroups(uint uid);
+    void addToGroups(uint uid, const QStringList &groups);
+    void removeFromGroups(uint uid, const QStringList &groups);
 
 private slots:
     void userServiceStop(QDBusPendingCallWatcher *replyWatcher);
@@ -60,7 +63,7 @@ private:
     uid_t checkCallerUid();
     void updateEnvironment(uint uid);
 
-    QTimer *m_timer;
+    QTimer *m_exitTimer;
     LibUserHelper *m_lu;
     uid_t m_switchUser;
     uid_t m_currentUid;
