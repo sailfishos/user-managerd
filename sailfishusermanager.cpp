@@ -44,6 +44,8 @@ const auto SYSTEMD_MANAGER_STOP = QStringLiteral("StopUnit");
 const auto USER_SERVICE = QStringLiteral("user@%1.service");
 const auto SYSTEMD_MANAGER_REPLACE = QStringLiteral("replace");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
+const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
+const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -493,6 +495,7 @@ void SailfishUserManager::autologinServiceStart(QDBusPendingCallWatcher *replyWa
         m_systemd->asyncCall(SYSTEMD_MANAGER_START, AUTOLOGIN_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
     } else {
         emit currentUserChanged(m_switchUser);
+        updateEnvironment(m_switchUser);
     }
     m_switchUser = 0;
     replyWatcher->deleteLater();
@@ -508,4 +511,27 @@ uint SailfishUserManager::currentUser()
         return SAILFISH_UNDEFINED_UID;
     }
     return uid;
+}
+
+void SailfishUserManager::updateEnvironment(uint uid)
+{
+    QFile file(ENVIRONMENT_FILE);
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        QByteArray line;
+        QByteArray rest;
+        while (!(line = file.readLine()).isEmpty()) {
+            if (line.startsWith(LAST_LOGIN_UID_KEY)) {
+                qint64 pos = file.pos();
+                rest = file.readAll();
+                file.seek(pos - line.length());
+                break;
+            }
+        }
+        file.write(LAST_LOGIN_UID_KEY);
+        file.write(QByteArray::number(uid));
+        file.write("\n");
+        file.write(rest);
+        file.resize(file.pos());
+        file.close();
+    }
 }

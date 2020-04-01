@@ -58,6 +58,7 @@ private slots:
 private:
     bool checkAccessRights(uint uid_to_modify);
     uid_t checkCallerUid();
+    void updateEnvironment(uint uid);
 
     QTimer *m_timer;
     LibUserHelper *m_lu;
