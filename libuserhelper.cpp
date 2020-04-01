@@ -66,10 +66,13 @@ bool LibUserHelper::removeGroup(const QString &group)
     if (lu_group_lookup_name(context, group.toUtf8(), ent_group, &error)) {
         if (!lu_group_delete(context, ent_group, &error)) {
             qCWarning(lcSUM) << "Group delete failed";
+            lu_error_free(&error);
             rv = false;
         }
     } else {
         qCWarning(lcSUM) << "Could not find group";
+        if (error)
+            lu_error_free(&error);
         rv = false;
     }
 
@@ -84,23 +87,66 @@ bool LibUserHelper::addUserToGroup(const QString &user, const QString &group)
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
     if (!context) {
-        qCWarning(lcSUM) << "Error creating context";
+        qCWarning(lcSUM) << "Error creating context:" << lu_strerror(error);
+        lu_error_free(&error);
         return false;
     }
 
     bool rv = true;
     struct lu_ent *ent = lu_ent_new();
-    if (lu_group_lookup_name(context, group.toLocal8Bit(), ent, &error)) {
+    if (lu_group_lookup_name(context, group.toUtf8(), ent, &error)) {
         GValue *value = g_slice_new0(GValue);
         g_value_init(value, G_TYPE_STRING);
         g_value_set_string(value, user.toUtf8());
         lu_ent_add(ent, LU_MEMBERNAME, value);
         if (!lu_group_modify(context, ent, &error)) {
             qCWarning(lcSUM) << "Group modify failed:" << lu_strerror(error);
+            lu_error_free(&error);
             rv = false;
         }
+        g_value_unset(value);
+        g_slice_free(GValue, value);
     } else {
         qCWarning(lcSUM) << "Could not find group";
+        if (error)
+            lu_error_free(&error);
+        rv = false;
+    }
+
+    lu_ent_free(ent);
+    lu_end(context);
+
+    return rv;
+}
+
+bool LibUserHelper::removeUserFromGroup(const QString &user, const QString &group)
+{
+    struct lu_error *error = nullptr;
+    struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
+    if (!context) {
+        qCWarning(lcSUM) << "Error creating context:" << lu_strerror(error);
+        lu_error_free(&error);
+        return false;
+    }
+
+    bool rv = true;
+    struct lu_ent *ent = lu_ent_new();
+    if (lu_group_lookup_name(context, group.toUtf8(), ent, &error)) {
+        GValue *value = g_slice_new0(GValue);
+        g_value_init(value, G_TYPE_STRING);
+        g_value_set_string(value, user.toUtf8());
+        lu_ent_del(ent, LU_MEMBERNAME, value);
+        if (!lu_group_modify(context, ent, &error)) {
+            qCWarning(lcSUM) << "Group modify failed:" << lu_strerror(error);
+            lu_error_free(&error);
+            rv = false;
+        }
+        g_value_unset(value);
+        g_slice_free(GValue, value);
+    } else {
+        qCWarning(lcSUM) << "Could not find group";
+        if (error)
+            lu_error_free(&error);
         rv = false;
     }
 
@@ -181,8 +227,13 @@ bool LibUserHelper::removeUser(uint uid)
                     }
                 }
             }
+
+            g_value_unset(value);
+            g_slice_free(GValue, value);
+            g_value_array_free(groups);
         } else {
-            lu_error_free(&error);
+            if (error)
+                lu_error_free(&error);
             error = nullptr;
         }
 
@@ -200,10 +251,13 @@ bool LibUserHelper::removeUser(uint uid)
             }
         } else {
             qCWarning(lcSUM) << "Could not find group";
+            lu_error_free(&error);
             rv = false;
         }
     } else {
         qCWarning(lcSUM) << "Could not find user";
+        if (error)
+            lu_error_free(&error);
         rv = false;
     }
 
@@ -237,6 +291,8 @@ bool LibUserHelper::modifyUser(uint uid, const QString &newName)
         }
     } else {
         qCWarning(lcSUM) << "Could not find user";
+        if (error)
+            lu_error_free(&error);
         rv = false;
     }
 
@@ -262,6 +318,44 @@ QString LibUserHelper::homeDir(uint uid)
         rv = lu_ent_get_first_string(ent, LU_HOMEDIRECTORY);
     } else {
         qCWarning(lcSUM) << "Could not find user";
+        if (error)
+            lu_error_free(&error);
+    }
+
+    lu_ent_free(ent);
+    lu_end(context);
+
+    return rv;
+}
+
+QStringList LibUserHelper::groups(uint uid)
+{
+    struct lu_error *error = nullptr;
+    struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
+    if (!context) {
+        qCWarning(lcSUM) << "Error creating context:" << lu_strerror(error);
+        lu_error_free(&error);
+        return QStringList();
+    }
+
+    QStringList rv;
+    struct lu_ent *ent = lu_ent_new();
+    if (lu_user_lookup_id(context, uid, ent, &error)) {
+        const char *user = lu_ent_get_first_string(ent, LU_USERNAME);
+        GValueArray *groups = lu_groups_enumerate_by_user(context, user, &error);
+        if (groups) {
+            for (uint i = 0; i < groups->n_values; i++) {
+                rv.append(g_value_get_string(g_value_array_get_nth(groups, i)));
+            }
+            g_value_array_free(groups);
+        } else {
+            qCWarning(lcSUM) << "Error getting users groups:" << lu_strerror(error);
+            lu_error_free(&error);
+        }
+    } else {
+        qCWarning(lcSUM) << "Could not find user";
+        if (error)
+            lu_error_free(&error);
     }
 
     lu_ent_free(ent);
