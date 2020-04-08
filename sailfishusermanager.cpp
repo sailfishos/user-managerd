@@ -71,9 +71,9 @@ SailfishUserManager::SailfishUserManager(QObject *parent) :
 
     new UsermanagerAdaptor(this);
 
-    m_timer = new QTimer(this);
-    connect(m_timer, &QTimer::timeout, qApp, &QCoreApplication::quit);
-    m_timer->start(QUIT_TIMEOUT);
+    m_exitTimer = new QTimer(this);
+    connect(m_exitTimer, &QTimer::timeout, qApp, &QCoreApplication::quit);
+    m_exitTimer->start(QUIT_TIMEOUT);
 }
 
 SailfishUserManager::~SailfishUserManager()
@@ -84,7 +84,7 @@ SailfishUserManager::~SailfishUserManager()
 
 QList<SailfishUserManagerEntry> SailfishUserManager::users()
 {
-    m_timer->start();
+    m_exitTimer->start();
     QList<SailfishUserManagerEntry> rv;
 
     struct group *grent = getgrnam(USER_GROUP);
@@ -195,7 +195,7 @@ uint SailfishUserManager::addUser(const QString &name)
     if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
         return 0;
 
-    m_timer->start();
+    m_exitTimer->start();
 
     if (name.isEmpty()) {
         qCWarning(lcSUM) << "Empty name";
@@ -272,7 +272,7 @@ void SailfishUserManager::removeUser(uint uid)
         return;
     }
 
-    m_timer->start();
+    m_exitTimer->start();
 
     if (!removeHome(uid)) {
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeRemoveFailed), QStringLiteral("Removing user home failed"));
@@ -292,7 +292,7 @@ void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
     if (!checkAccessRights(uid))
         return;
 
-    m_timer->start();
+    m_exitTimer->start();
 
     if (!m_lu->modifyUser(uid, new_name)) {
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("User modify failed"));
@@ -412,7 +412,7 @@ void SailfishUserManager::setCurrentUser(uint uid)
     if (!uidFound) {
         auto message = QStringLiteral("User not found");
         qCWarning(lcSUM) << message;
-        sendErrorReply(QDBusError::InvalidArgs, message);
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserNotFound), message);
         return;
     }
 
@@ -438,7 +438,7 @@ void SailfishUserManager::setCurrentUser(uint uid)
     emit aboutToChangeCurrentUser(uid);
 
     m_switchUser = uid;
-    m_timer->start();
+    m_exitTimer->start();
 
     if (!m_systemd)
         m_systemd = new QDBusInterface(SYSTEMD_MANAGER_SERVICE, SYSTEMD_MANAGER_PATH, SYSTEMD_MANAGER_INTERFACE, QDBusConnection::systemBus());
@@ -503,6 +503,7 @@ void SailfishUserManager::autologinServiceStart(QDBusPendingCallWatcher *replyWa
 
 uint SailfishUserManager::currentUser()
 {
+    m_exitTimer->start();
     uid_t uid;
     if (sd_seat_get_active("seat0", nullptr, &uid) < 0) {
         auto message = QStringLiteral("Failed to get current user id");
@@ -533,5 +534,84 @@ void SailfishUserManager::updateEnvironment(uint uid)
         file.write(rest);
         file.resize(file.pos());
         file.close();
+    }
+}
+
+QStringList SailfishUserManager::usersGroups(uint uid)
+{
+    m_exitTimer->start();
+    return m_lu->groups(uid);
+}
+
+void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
+{
+    if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
+        return;
+
+    m_exitTimer->start();
+
+    struct passwd *pwd = getpwuid(uid);
+    if (!pwd) {
+        auto message = QStringLiteral("User not found");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserNotFound), message);
+        return;
+    }
+
+    QStringList original = m_lu->groups(uid);
+    QStringList revert;
+    foreach (const QString &group, groups) {
+        if (!original.contains(group)) {
+            if (m_lu->addUserToGroup(pwd->pw_name, group)) {
+                revert.append(group);
+            } else {
+                auto message = QStringLiteral("Failed to add user to group");
+                qCWarning(lcSUM) << message;
+                sendErrorReply(QStringLiteral(SailfishUserManagerErrorAddToGroupFailed), message);
+
+                // Revert back to original groups
+                foreach (const QString &newGroup, revert)
+                    m_lu->removeUserFromGroup(pwd->pw_name, newGroup);
+
+                return;
+            }
+        }
+    }
+}
+
+void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
+{
+    if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
+        return;
+
+    m_exitTimer->start();
+
+    struct passwd *pwd = getpwuid(uid);
+    if (!pwd) {
+        auto message = QStringLiteral("User not found");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserNotFound), message);
+        return;
+    }
+
+    QStringList original = m_lu->groups(uid);
+    QStringList revert;
+
+    foreach (const QString &group, groups) {
+        if (original.contains(group)) {
+            if (m_lu->removeUserFromGroup(pwd->pw_name, group)) {
+                revert.append(group);
+            } else {
+                auto message = QStringLiteral("Failed to remove user from group");
+                qCWarning(lcSUM) << message;
+                sendErrorReply(QStringLiteral(SailfishUserManagerErrorRemoveFromGroupFailed), message);
+
+                // Revert back to original groups
+                foreach (const QString &oldGroup, revert)
+                    m_lu->addUserToGroup(pwd->pw_name, oldGroup);
+
+                return;
+            }
+        }
     }
 }

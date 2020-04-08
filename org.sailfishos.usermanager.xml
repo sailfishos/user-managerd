@@ -43,6 +43,21 @@
     <method name="currentUser">
         <arg direction="out" type="u" name="uid"/>
     </method>
+    <method name="usersGroups">
+        <arg direction="in" type="u" name="uid"/>
+        <arg direction="out" type="as" name="groups"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QStringList"/>
+    </method>
+    <method name="addToGroups">
+        <arg direction="in" type="u" name="uid"/>
+        <arg direction="in" type="as" name="groups"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QStringList"/>
+    </method>
+    <method name="removeFromGroups">
+        <arg direction="in" type="u" name="uid"/>
+        <arg direction="in" type="as" name="groups"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QStringList"/>
+    </method>
   </interface>
 </node>
 
