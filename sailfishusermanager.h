@@ -54,6 +54,7 @@ public slots:
     void removeFromGroups(uint uid, const QStringList &groups);
 
 private slots:
+    void exitTimeout();
     void userServiceStop(QDBusPendingCallWatcher *replyWatcher);
     void autologinServiceStop(QDBusPendingCallWatcher *replyWatcher);
     void autologinServiceStart(QDBusPendingCallWatcher *replyWatcher);
