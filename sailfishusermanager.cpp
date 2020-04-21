@@ -34,6 +34,7 @@ const auto SKEL_DIR = QStringLiteral("/etc/skel");
 const auto USER_HOME = QStringLiteral("/home/%1");
 const int HOME_MODE = 0700;
 const int QUIT_TIMEOUT = 60 * 1000; // One minute quit timeout
+const int SWITCHING_DELAY = 1000; // One second time before changing currentUser
 const int MAX_RESERVED_UID = 99999;
 const int OWNER_USER_UID = 100000;
 const auto SYSTEMD_MANAGER_SERVICE = QStringLiteral("org.freedesktop.systemd1");
@@ -72,7 +73,7 @@ SailfishUserManager::SailfishUserManager(QObject *parent) :
     new UsermanagerAdaptor(this);
 
     m_exitTimer = new QTimer(this);
-    connect(m_exitTimer, &QTimer::timeout, qApp, &QCoreApplication::quit);
+    connect(m_exitTimer, &QTimer::timeout, this, &SailfishUserManager::exitTimeout);
     m_exitTimer->start(QUIT_TIMEOUT);
 }
 
@@ -80,6 +81,13 @@ SailfishUserManager::~SailfishUserManager()
 {
     delete m_lu;
     m_lu = nullptr;
+}
+
+void SailfishUserManager::exitTimeout()
+{
+    // Quit if user switching is not in progress
+    if (m_switchUser == 0)
+        qApp->quit();
 }
 
 QList<SailfishUserManagerEntry> SailfishUserManager::users()
@@ -438,15 +446,16 @@ void SailfishUserManager::setCurrentUser(uint uid)
     emit aboutToChangeCurrentUser(uid);
 
     m_switchUser = uid;
-    m_exitTimer->start();
 
-    if (!m_systemd)
-        m_systemd = new QDBusInterface(SYSTEMD_MANAGER_SERVICE, SYSTEMD_MANAGER_PATH, SYSTEMD_MANAGER_INTERFACE, QDBusConnection::systemBus());
+    QTimer::singleShot(SWITCHING_DELAY, [this] {
+        if (!m_systemd)
+            m_systemd = new QDBusInterface(SYSTEMD_MANAGER_SERVICE, SYSTEMD_MANAGER_PATH, SYSTEMD_MANAGER_INTERFACE, QDBusConnection::systemBus());
 
-    // Stop user service
-    QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_STOP, USER_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
-    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, &SailfishUserManager::userServiceStop);
+        // Stop user service
+        QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_STOP, USER_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(call, this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, &SailfishUserManager::userServiceStop);
+    });
 }
 
 void SailfishUserManager::userServiceStop(QDBusPendingCallWatcher *replyWatcher)
@@ -456,6 +465,7 @@ void SailfishUserManager::userServiceStop(QDBusPendingCallWatcher *replyWatcher)
         qCWarning(lcSUM) << QStringLiteral("Failed to stop current user session: %1").arg(reply.error().message());
         emit currentUserChangeFailed(m_switchUser);
         m_switchUser = 0;
+        m_exitTimer->start();
     } else {
         // Stop autologin service
         QDBusPendingCall call = m_systemd->asyncCall(SYSTEMD_MANAGER_STOP, AUTOLOGIN_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
@@ -472,6 +482,7 @@ void SailfishUserManager::autologinServiceStop(QDBusPendingCallWatcher *replyWat
         qCWarning(lcSUM) << QStringLiteral("Failed to stop current user autologin: %1").arg(reply.error().message());
         emit currentUserChangeFailed(m_switchUser);
         m_switchUser = 0;
+        m_exitTimer->start();
 
         // Try to recover by restarting the old user service
         m_systemd->asyncCall(SYSTEMD_MANAGER_START, USER_SERVICE.arg(m_currentUid), SYSTEMD_MANAGER_REPLACE);
@@ -498,6 +509,7 @@ void SailfishUserManager::autologinServiceStart(QDBusPendingCallWatcher *replyWa
         updateEnvironment(m_switchUser);
     }
     m_switchUser = 0;
+    m_exitTimer->start();
     replyWatcher->deleteLater();
 }
 
