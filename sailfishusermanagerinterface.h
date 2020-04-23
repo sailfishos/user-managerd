@@ -15,12 +15,14 @@
 
 #define SAILFISH_USERMANAGER_DBUS_INTERFACE "org.sailfishos.usermanager"
 #define SAILFISH_USERMANAGER_DBUS_OBJECT_PATH "/"
+#define SAILFISH_USERMANAGER_MAX_USERS 7
 
 #define SailfishUserManagerErrorBusy "org.sailfishos.usermanager.Error.Busy"
 #define SailfishUserManagerErrorHomeCreateFailed "org.sailfishos.usermanager.Error.HomeCreateFailed"
 #define SailfishUserManagerErrorHomeRemoveFailed "org.sailfishos.usermanager.Error.HomeRemoveFailed"
 #define SailfishUserManagerErrorGroupCreateFailed "org.sailfishos.usermanager.Error.GroupCreateFailed"
 #define SailfishUserManagerErrorUserAddFailed "org.sailfishos.usermanager.Error.UserAddFailed"
+#define SailfishUserManagerErrorMaxUsersReached "org.sailfishos.usermanager.Error.MaxUsersReached"
 #define SailfishUserManagerErrorUserModifyFailed "org.sailfishos.usermanager.Error.UserModifyFailed"
 #define SailfishUserManagerErrorUserRemoveFailed "org.sailfishos.usermanager.Error.UserRemoveFailed"
 #define SailfishUserManagerErrorGetUidFailed "org.sailfishos.usermanager.Error.GetUidFailed"

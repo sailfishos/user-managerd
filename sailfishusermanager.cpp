@@ -108,8 +108,8 @@ QList<SailfishUserManagerEntry> SailfishUserManager::users()
                 int i = user.name.indexOf(',');
                 if (i != -1)
                     user.name.remove(i, user.name.length());
+                rv.append(user);
             }
-            rv.append(user);
         }
     } else {
         qCWarning(lcSUM) << "Getting user group failed";
@@ -208,6 +208,22 @@ uint SailfishUserManager::addUser(const QString &name)
     if (name.isEmpty()) {
         qCWarning(lcSUM) << "Empty name";
         sendErrorReply(QDBusError::InvalidArgs, "Empty name");
+        return 0;
+    }
+
+    int count = 0;
+    struct group *grent = getgrnam(USER_GROUP);
+    if (grent) {
+        for (int i = 0; grent->gr_mem[i]; i++) {
+            if (getpwnam(grent->gr_mem[i]))
+                count++;
+        }
+    }
+    if (count > SAILFISH_USERMANAGER_MAX_USERS) {
+        // Just > above because master user is also member of users group
+        auto message = QStringLiteral("Maximum number of users reached");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorMaxUsersReached), message);
         return 0;
     }
 
