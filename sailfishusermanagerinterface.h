@@ -15,6 +15,8 @@
 
 #define SAILFISH_USERMANAGER_DBUS_INTERFACE "org.sailfishos.usermanager"
 #define SAILFISH_USERMANAGER_DBUS_OBJECT_PATH "/"
+
+// Luks has eight slots where one slot is reserved for backup
 #define SAILFISH_USERMANAGER_MAX_USERS 7
 
 #define SailfishUserManagerErrorBusy "org.sailfishos.usermanager.Error.Busy"
