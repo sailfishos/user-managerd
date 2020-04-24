@@ -219,8 +219,8 @@ uint SailfishUserManager::addUser(const QString &name)
                 count++;
         }
     }
-    if (count > SAILFISH_USERMANAGER_MAX_USERS) {
-        // Just > above because master user is also member of users group
+    if (count > (SAILFISH_USERMANAGER_MAX_USERS - 1)) {
+        // Master user reserves one slot above
         auto message = QStringLiteral("Maximum number of users reached");
         qCWarning(lcSUM) << message;
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorMaxUsersReached), message);

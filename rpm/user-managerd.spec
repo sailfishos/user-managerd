@@ -11,6 +11,7 @@ BuildRequires: pkgconfig(libuser)
 BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(mce-qt5)
+BuildRequires: sed
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
 %description
@@ -36,6 +37,8 @@ Requires: user-managerd
 
 %prep
 %setup -q -n %{name}-%{version}
+export VERSION=`echo %{version} | sed 's/+.*//'`
+sed -i "s/^Version: .*/Version: "${VERSION}"/" sailfishusermanager.pc
 
 %build
 mkdir -p build && cd build
