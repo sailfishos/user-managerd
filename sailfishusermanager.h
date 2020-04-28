@@ -11,7 +11,7 @@
 #define SAILFISHUSERMANAGER_H
 
 #include "sailfishusermanagerinterface.h"
-
+#include "systemdmanager.h"
 #include <QDBusContext>
 
 class QTimer;
@@ -55,9 +55,10 @@ public slots:
 
 private slots:
     void exitTimeout();
-    void userServiceStop(QDBusPendingCallWatcher *replyWatcher);
-    void autologinServiceStop(QDBusPendingCallWatcher *replyWatcher);
-    void autologinServiceStart(QDBusPendingCallWatcher *replyWatcher);
+    void onBusyChanged();
+    void onUnitJobFinished(SystemdManager::Job &job);
+    void onUnitJobFailed(SystemdManager::Job &job, SystemdManager::JobList &remaining);
+    void onCreatingJobFailed(SystemdManager::JobList &remaining);
 
 private:
     bool checkAccessRights(uint uid_to_modify);
@@ -68,7 +69,7 @@ private:
     LibUserHelper *m_lu;
     uid_t m_switchUser;
     uid_t m_currentUid;
-    QDBusInterface *m_systemd;
+    SystemdManager *m_systemd;
 };
 
 #endif // SAILFISHUSERMANAGER_H
