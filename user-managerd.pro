@@ -25,12 +25,14 @@ DBUS_ADAPTORS += dbus_interface
 
 SOURCES += \
         libuserhelper.cpp \
+        systemdmanager.cpp \
         logging.cpp \
         main.cpp \
         sailfishusermanager.cpp
 
 HEADERS += \
     libuserhelper.h \
+    systemdmanager.h \
     logging.h \
     sailfishusermanager.h \
     sailfishusermanagerinterface.h
