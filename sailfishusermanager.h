@@ -10,6 +10,10 @@
 #ifndef SAILFISHUSERMANAGER_H
 #define SAILFISHUSERMANAGER_H
 
+#ifndef __GLIBC__
+#include <sys/types.h>
+#endif
+
 #include "sailfishusermanagerinterface.h"
 #include "systemdmanager.h"
 #include <QDBusContext>
