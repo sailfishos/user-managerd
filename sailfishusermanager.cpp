@@ -27,6 +27,7 @@
 #include <sailfishaccesscontrol.h>
 #include <systemd/sd-login.h>
 #include <qmcecallstate.h>
+#include <nemo-devicelock/devicelock.h>
 
 const char *USER_GROUP = "users";
 const char *GROUPS_USER = "USER_GROUPS";
@@ -43,6 +44,10 @@ const auto USER_SERVICE = QStringLiteral("user@%1.service");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
 const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
+const auto DEVICELOCK_SERVICE = QStringLiteral("org.nemomobile.devicelock");
+const auto DEVICELOCK_PATH = QStringLiteral("/devicelock");
+const auto DEVICELOCK_INTERFACE = QStringLiteral("org.nemomobile.lipstick.devicelock");
+const auto DEVICELOCK_METHOD = QStringLiteral("setState");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -491,6 +496,12 @@ void SailfishUserManager::onUnitJobFinished(SystemdManager::Job &job)
         emit currentUserChanged(m_switchUser);
         updateEnvironment(m_switchUser);
         m_switchUser = 0;
+        // Enable lipstick lockcode, doesn't do anything if code is not enabled
+        QDBusMessage message = QDBusMessage::createMethodCall(DEVICELOCK_SERVICE, DEVICELOCK_PATH, DEVICELOCK_INTERFACE, DEVICELOCK_METHOD);
+        QList<QVariant> arguments;
+        arguments << NemoDeviceLock::DeviceLock::Locked; // Enable lock
+        message.setArguments(arguments);
+        QDBusConnection::systemBus().call(message);
     } else if (job.type == SystemdManager::StartJob && job.unit == DEFAULT_TARGET) {
         // Backup plan
         if (m_currentUid != currentUser())

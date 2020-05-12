@@ -11,6 +11,7 @@ BuildRequires: pkgconfig(libuser)
 BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(mce-qt5)
+BuildRequires: pkgconfig(nemodevicelock)
 BuildRequires: sed
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
