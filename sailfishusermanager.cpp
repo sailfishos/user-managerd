@@ -85,6 +85,8 @@ void SailfishUserManager::exitTimeout()
     if (m_switchUser == 0) {
         qCDebug(lcSUM) << "Exit timeout reached, quitting";
         qApp->quit();
+    } else {
+        qCDebug(lcSUM) << "User switching in progress, not quitting yet";
     }
 }
 
@@ -110,8 +112,9 @@ QList<SailfishUserManagerEntry> SailfishUserManager::users()
             }
         }
     } else {
-        qCWarning(lcSUM) << "Getting user group failed";
-        sendErrorReply(QDBusError::Failed, "Getting user group failed");
+        auto message = QStringLiteral("Getting user group failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::Failed, message);
     }
 
     return rv;
@@ -204,8 +207,9 @@ uint SailfishUserManager::addUser(const QString &name)
     m_exitTimer->start();
 
     if (name.isEmpty()) {
-        qCWarning(lcSUM) << "Empty name";
-        sendErrorReply(QDBusError::InvalidArgs, "Empty name");
+        auto message = QStringLiteral("Empty name");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return 0;
     }
 
@@ -457,6 +461,7 @@ void SailfishUserManager::setCurrentUser(uint uid)
         return;
     }
 
+    qCDebug(lcSUM) << "About to switch user to uid" << uid;
     emit aboutToChangeCurrentUser(uid);
 
     m_switchUser = uid;
@@ -469,6 +474,7 @@ void SailfishUserManager::setCurrentUser(uint uid)
             connect(m_systemd, &SystemdManager::unitJobFailed, this, &SailfishUserManager::onUnitJobFailed);
             connect(m_systemd, &SystemdManager::creatingJobFailed, this, &SailfishUserManager::onCreatingJobFailed);
         }
+        qCDebug(lcSUM) << "Switching user from" << m_currentUid << "to" << m_switchUser << "now";
         m_systemd->addUnitJobs(SystemdManager::JobList()
                                << SystemdManager::Job::stop(USER_SERVICE.arg(m_currentUid))
                                << SystemdManager::Job::stop(AUTOLOGIN_SERVICE.arg(m_currentUid))
@@ -502,13 +508,16 @@ void SailfishUserManager::onUnitJobFailed(SystemdManager::Job &job, SystemdManag
     emit currentUserChangeFailed(m_switchUser);
     if (job.type == SystemdManager::StopJob && job.unit == USER_SERVICE.arg(m_currentUid)) {
         // session systemd is fubar, autologin is probably still up
+        qCWarning(lcSUM) << "Unit failed while stopping session, trying to continue";
         m_systemd->addUnitJobs(remaining); // Try to continue anyway
     } else if (job.type == SystemdManager::StopJob && job.unit == AUTOLOGIN_SERVICE.arg(m_currentUid)) {
         // session systemd is down, autologind stop failed
+        qCWarning(lcSUM) << "Autologin failed while stopping it, trying to continue";
         m_systemd->addUnitJobs(remaining); // Try to continue anyway
     } else if (job.type == SystemdManager::StartJob && job.unit == AUTOLOGIN_SERVICE.arg(m_switchUser)) {
         // session systemd is already down, autologind didn't come back again
         // Try to start to user session normally still
+        qCWarning(lcSUM) << "User session start failed, trying to start default target as fallback";
         m_systemd->addUnitJob(SystemdManager::Job::start(DEFAULT_TARGET));
         m_switchUser = 0;
     }
@@ -519,6 +528,7 @@ void SailfishUserManager::onCreatingJobFailed(SystemdManager::JobList &remaining
     if (remaining.count() == 1) {
         if (remaining.first().unit == AUTOLOGIN_SERVICE.arg(m_switchUser)) {
             // Try to start to user session normally still
+            qCWarning(lcSUM) << "Could not start user session, trying to start default target as fallback";
             m_systemd->addUnitJob(SystemdManager::Job::start(DEFAULT_TARGET));
             m_switchUser = 0;
         } // else it was DEFAULT_TARGET and there isn't much that can be done
@@ -528,7 +538,11 @@ void SailfishUserManager::onCreatingJobFailed(SystemdManager::JobList &remaining
             // TODO: What to do?
             qCWarning(lcSUM) << "Unhandled error case";
         }
-    } // else nothing was done
+    } else { // nothing was done
+        qCWarning(lcSUM) << "User switching did not begin";
+        // TODO: This should signal that user switch was cancelled, see JB#49966
+        m_switchUser = 0;
+    }
 }
 
 uint SailfishUserManager::currentUser()
