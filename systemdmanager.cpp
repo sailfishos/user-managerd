@@ -31,6 +31,7 @@ const auto ResultSkipped = QStringLiteral("skipped");
 
 SystemdManager::SystemdManager(QObject *parent) :
     QObject(parent),
+    m_pendingCall(nullptr),
     m_systemd(new QDBusInterface(Systemd::Service, Systemd::ManagerPath,
                                  Systemd::ManagerInterface,
                                  QDBusConnection::systemBus(), this))
