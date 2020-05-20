@@ -43,6 +43,7 @@ const auto USER_SERVICE = QStringLiteral("user@%1.service");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
 const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
+const int MAX_USERNAME_LENGTH = 20;
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -233,11 +234,9 @@ uint SailfishUserManager::addUser(const QString &name)
     QString simplified = name.simplified().toLower();
     QString cleanName;
     int i;
-    for (i = 0; i < simplified.length(); i++) {
+    for (i = 0; i < simplified.length() && cleanName.length() < MAX_USERNAME_LENGTH; i++) {
         if (simplified[i].isLetterOrNumber() && simplified[i] <= 'z')
             cleanName.append(simplified[i]);
-        if (cleanName.length() >= 10)
-            break;
     }
     if (cleanName.isEmpty())
         cleanName = "user";
