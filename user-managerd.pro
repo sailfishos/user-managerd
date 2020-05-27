@@ -58,7 +58,7 @@ conf.files = $${DBUS_SERVICE_NAME}.conf
 conf.path = /etc/dbus-1/system.d/
 
 pkgconfig.files = sailfishusermanager.pc
-pkgconfig.path = /usr/lib/pkgconfig
+pkgconfig.path = $$[QT_INSTALL_LIBS]/pkgconfig
 
 include.files = sailfishusermanagerinterface.h $${DBUS_SERVICE_NAME}.xml
 include.path = /usr/include/sailfishusermanager
