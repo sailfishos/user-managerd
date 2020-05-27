@@ -27,7 +27,7 @@ Requires: user-managerd
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-/lib/systemd/system/*.service
+%{_unitdir}/*.service
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
 
