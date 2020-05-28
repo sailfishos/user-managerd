@@ -30,6 +30,7 @@ class SailfishUserManager : public QObject, protected QDBusContext
 public:
     explicit SailfishUserManager(QObject *parent = nullptr);
     ~SailfishUserManager();
+    static int removeUserFiles(const char *user);
 
 private:
     bool addUserToGroups(const QString &user);
@@ -37,6 +38,7 @@ private:
     bool removeDir(const QString &dir);
     bool removeHome(uint uid);
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);
+    static int removeUserFiles(uint uid);
 
 signals:
     void userAdded(const SailfishUserManagerEntry &user);

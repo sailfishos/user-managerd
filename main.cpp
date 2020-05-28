@@ -14,6 +14,8 @@
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    if (argc > 2 && !strcmp(argv[1], "--removeUserFiles"))
+        return SailfishUserManager::removeUserFiles(argv[2]);
     SailfishUserManager daemon;
     return app.exec();
 }

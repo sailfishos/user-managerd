@@ -44,6 +44,7 @@ const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
 const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 const int MAX_USERNAME_LENGTH = 20;
+const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -287,6 +288,23 @@ uint SailfishUserManager::addUser(const QString &name)
     return uid;
 }
 
+int SailfishUserManager::removeUserFiles(uint uid)
+{
+    QDir dir(USER_ENVIRONMENT_DIR.arg(uid));
+    if (dir.removeRecursively())
+        return EXIT_SUCCESS;
+    qCWarning(lcSUM) << "Removing user environment directory failed";
+    return EXIT_FAILURE;
+}
+
+int SailfishUserManager::removeUserFiles(const char *user)
+{
+    struct passwd *pwd = getpwnam(user);
+    if (pwd)
+        return removeUserFiles(pwd->pw_uid);
+    return EXIT_FAILURE;
+}
+
 void SailfishUserManager::removeUser(uint uid)
 {
     if (!checkAccessRights(uid))
@@ -303,6 +321,8 @@ void SailfishUserManager::removeUser(uint uid)
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeRemoveFailed), QStringLiteral("Removing user home failed"));
         return;
     }
+
+    removeUserFiles(uid);
 
     if (!m_lu->removeUser(uid)) {
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), QStringLiteral("User remove failed"));
