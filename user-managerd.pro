@@ -44,7 +44,8 @@ DISTFILES += \
     org.sailfishos.usermanager.conf \
     org.sailfishos.usermanager.service \
     org.sailfishos.usermanager.xml \
-    rpm/user-managerd.spec
+    rpm/user-managerd.spec \
+    userdel_local.sh
 
 target.path = /usr/bin/
 
@@ -63,4 +64,7 @@ pkgconfig.path = $$[QT_INSTALL_LIBS]/pkgconfig
 include.files = sailfishusermanagerinterface.h $${DBUS_SERVICE_NAME}.xml
 include.path = /usr/include/sailfishusermanager
 
-INSTALLS += target systemd service conf pkgconfig include
+userdel.files = userdel_local.sh
+userdel.path = /usr/sbin/
+
+INSTALLS += target systemd service conf pkgconfig include userdel
