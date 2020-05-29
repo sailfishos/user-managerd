@@ -14,6 +14,7 @@ BuildRequires: pkgconfig(mce-qt5)
 BuildRequires: sed
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
+Requires: shadow-utils
 %description
 %{summary}.
 
@@ -30,6 +31,7 @@ Requires: user-managerd
 %{_unitdir}/*.service
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
+%{_sbindir}/userdel_local.sh
 
 %files devel
 %{_prefix}/include/sailfishusermanager
@@ -53,3 +55,9 @@ systemctl stop dbus-org.sailfishos.usermanager.service || :
 
 %post
 systemctl daemon-reload
+sed -i 's/^\#USERDEL_CMD.*/USERDEL_CMD \/usr\/sbin\/userdel_local.sh/' /etc/login.defs
+
+%postun
+if [ $1 -eq 0 ]; then
+    sed -i 's/^USERDEL_CMD.*/\#USERDEL_CMD/' /etc/login.defs
+fi
