@@ -45,6 +45,7 @@ const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 const int MAX_USERNAME_LENGTH = 20;
 const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
+const auto USER_REMOVE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/remove.d");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -135,7 +136,7 @@ bool SailfishUserManager::addUserToGroups(const QString &user)
     while (!file.atEnd()) {
         line = file.readLine();
         if (line.startsWith(GROUPS_USER)) {
-            foreach (const QString& group, line.mid(strlen(GROUPS_USER) + 1).split(',')) {
+            for (const QString& group : line.mid(strlen(GROUPS_USER) + 1).split(',')) {
                 if (!m_lu->addUserToGroup(user, group.trimmed())) {
                     file.close();
                     return false;
@@ -160,12 +161,12 @@ bool SailfishUserManager::copyDir(const QString &source, const QString &destinat
         return false;
     }
 
-    foreach (const QString &dir, sourceDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden)) {
+    for (const QString &dir : sourceDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden)) {
         if (!copyDir(sourceDir.path() + '/' + dir, destination + '/' + dir, uid, guid))
             return false;
     }
 
-    foreach (const QString &file, sourceDir.entryList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden)) {
+    for (const QString &file : sourceDir.entryList(QDir::Files | QDir::NoDotAndDotDot | QDir::Hidden)) {
         QString destFile = QString("%1/%2").arg(destination).arg(file);
         if (!QFile::copy(QString("%1/%2").arg(sourceDir.path()).arg(file), destFile)) {
             qCWarning(lcSUM) << "Failed to copy file";
@@ -290,11 +291,22 @@ uint SailfishUserManager::addUser(const QString &name)
 
 int SailfishUserManager::removeUserFiles(uint uid)
 {
+    int rv = EXIT_FAILURE;
     QDir dir(USER_ENVIRONMENT_DIR.arg(uid));
     if (dir.removeRecursively())
-        return EXIT_SUCCESS;
-    qCWarning(lcSUM) << "Removing user environment directory failed";
-    return EXIT_FAILURE;
+        rv = EXIT_SUCCESS;
+    else
+        qCWarning(lcSUM) << "Removing user environment directory failed";
+
+    // Execute user removal scripts
+    QDir removal(USER_REMOVE_SCRIPT_DIR);
+    for (const QString &entry : removal.entryList(QDir::Files | QDir::Executable)) {
+        int exitCode = QProcess::execute(USER_REMOVE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
+        if (exitCode)
+            qCWarning(lcSUM) << "User remove script" << USER_REMOVE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
+    }
+
+    return rv;
 }
 
 int SailfishUserManager::removeUserFiles(const char *user)
@@ -639,7 +651,7 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
 
     QStringList original = m_lu->groups(uid);
     QStringList revert;
-    foreach (const QString &group, groups) {
+    for (const QString &group : groups) {
         if (!original.contains(group)) {
             if (m_lu->addUserToGroup(pwd->pw_name, group)) {
                 revert.append(group);
@@ -649,7 +661,7 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
                 sendErrorReply(QStringLiteral(SailfishUserManagerErrorAddToGroupFailed), message);
 
                 // Revert back to original groups
-                foreach (const QString &newGroup, revert)
+                for (const QString &newGroup : revert)
                     m_lu->removeUserFromGroup(pwd->pw_name, newGroup);
 
                 return;
@@ -676,7 +688,7 @@ void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
     QStringList original = m_lu->groups(uid);
     QStringList revert;
 
-    foreach (const QString &group, groups) {
+    for (const QString &group : groups) {
         if (original.contains(group)) {
             if (m_lu->removeUserFromGroup(pwd->pw_name, group)) {
                 revert.append(group);
@@ -686,7 +698,7 @@ void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
                 sendErrorReply(QStringLiteral(SailfishUserManagerErrorRemoveFromGroupFailed), message);
 
                 // Revert back to original groups
-                foreach (const QString &oldGroup, revert)
+                for (const QString &oldGroup : revert)
                     m_lu->addUserToGroup(pwd->pw_name, oldGroup);
 
                 return;
