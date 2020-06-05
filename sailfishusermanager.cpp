@@ -497,7 +497,8 @@ void SailfishUserManager::setCurrentUser(uint uid)
         m_systemd->addUnitJobs(SystemdManager::JobList()
                                << SystemdManager::Job::stop(USER_SERVICE.arg(m_currentUid))
                                << SystemdManager::Job::stop(AUTOLOGIN_SERVICE.arg(m_currentUid))
-                               << SystemdManager::Job::start(AUTOLOGIN_SERVICE.arg(m_switchUser)));
+                               << SystemdManager::Job::start(AUTOLOGIN_SERVICE.arg(m_switchUser))
+                               << SystemdManager::Job::start(USER_SERVICE.arg(m_switchUser), false));
     });
 }
 
@@ -511,7 +512,7 @@ void SailfishUserManager::onBusyChanged()
 
 void SailfishUserManager::onUnitJobFinished(SystemdManager::Job &job)
 {
-    if (job.type == SystemdManager::StartJob && job.unit == AUTOLOGIN_SERVICE.arg(m_switchUser)) {
+    if (job.type == SystemdManager::StartJob && job.unit == USER_SERVICE.arg(m_switchUser)) {
         // Everything went well
         emit currentUserChanged(m_switchUser);
         updateEnvironment(m_switchUser);
@@ -539,29 +540,37 @@ void SailfishUserManager::onUnitJobFailed(SystemdManager::Job &job, SystemdManag
         qCWarning(lcSUM) << "User session start failed, trying to start default target as fallback";
         m_systemd->addUnitJob(SystemdManager::Job::start(DEFAULT_TARGET));
         m_switchUser = 0;
+    } else if (job.type == SystemdManager::StartJob && job.unit == USER_SERVICE.arg(m_switchUser)) {
+        // autologind was started but starting user@.service failed, probably because it was already starting
+        qCWarning(lcSUM) << "Starting session systemd failed, is it already starting?";
+        m_switchUser = 0;
     }
 }
 
 void SailfishUserManager::onCreatingJobFailed(SystemdManager::JobList &remaining) {
     emit currentUserChangeFailed(m_switchUser);
     if (remaining.count() == 1) {
+        if (remaining.first().unit == USER_SERVICE.arg(m_switchUser)) {
+            // autologind was started but session systemd wasn't, probably because it was already starting
+            qCWarning(lcSUM) << "Could not start session systemd, is it already starting?";
+        } // else it was DEFAULT_TARGET and there isn't much that can be done
+    } else if (remaining.count() == 2) {
         if (remaining.first().unit == AUTOLOGIN_SERVICE.arg(m_switchUser)) {
             // Try to start to user session normally still
             qCWarning(lcSUM) << "Could not start user session, trying to start default target as fallback";
             m_systemd->addUnitJob(SystemdManager::Job::start(DEFAULT_TARGET));
-            m_switchUser = 0;
-        } // else it was DEFAULT_TARGET and there isn't much that can be done
-    } else if (remaining.count() == 2) {
+        }
+    } else if (remaining.count() == 3) {
         if (remaining.first().unit == AUTOLOGIN_SERVICE.arg(m_currentUid)) {
             // session systemd is stopped but autologin is still up and it wasn't brought down
             // TODO: What to do?
-            qCWarning(lcSUM) << "Unhandled error case";
+            qCWarning(lcSUM) << "Could not stop autologin, unhandled error case";
         }
     } else { // nothing was done
         qCWarning(lcSUM) << "User switching did not begin";
         // TODO: This should signal that user switch was cancelled, see JB#49966
-        m_switchUser = 0;
     }
+    m_switchUser = 0;
 }
 
 uint SailfishUserManager::currentUser()
