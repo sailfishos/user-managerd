@@ -108,22 +108,23 @@ void SystemdManager::onJobRemoved(uint id, QDBusObjectPath job, QString unit, QS
 {
     Q_UNUSED(id)
     if (job.path() == m_currentJob) {
-        qCWarning(lcSUM) << "Systemd job" << job.path() << "for unit" << unit
-                         << "ended with result" << result;
-        if (result == Systemd::ResultSkipped) {
-            // This means that the job didn't do anything yet
-            m_currentJob.clear(); // Clear busyness before signal
-            JobList remaining;
-            remaining.swap(m_jobs);
-            emit creatingJobFailed(remaining);
-        } else if (result != Systemd::ResultDone) {
+        if (result != Systemd::ResultDone) {
             // Uh, Houston, we've had a problem
+            qCWarning(lcSUM) << "Systemd" << (m_jobs.first().type == StopJob) ? "stop" : "start" << "job"
+                             << job.path() << "for unit" << unit << "ended with result" << result;
             m_currentJob.clear(); // Clear busyness before signal
-            Job failed = m_jobs.takeFirst();
             JobList remaining;
             remaining.swap(m_jobs);
-            emit unitJobFailed(failed, remaining);
+            if (result == Systemd::ResultSkipped) {
+                // This means that the job didn't do anything yet
+                emit creatingJobFailed(remaining);
+            } else {
+                Job failed = remaining.takeFirst();
+                emit unitJobFailed(failed, remaining);
+            }
         } else {
+            qCDebug(lcSUM) << "Systemd" << (m_jobs.first().type == StopJob) ? "stop" : "start" << "job"
+                           << job.path() << "for unit" << unit << "ended with result" << result;
             Job done = m_jobs.takeFirst();
             emit unitJobFinished(done);
             m_currentJob.clear(); // Clear busyness *after* signal
