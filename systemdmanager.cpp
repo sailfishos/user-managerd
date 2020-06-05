@@ -18,6 +18,7 @@ const auto Service = QStringLiteral("org.freedesktop.systemd1");
 const auto ManagerPath = QStringLiteral("/org/freedesktop/systemd1");
 const auto ManagerInterface = QStringLiteral("org.freedesktop.systemd1.Manager");
 const auto Replace = QStringLiteral("replace");
+const auto Fail = QStringLiteral("fail");
 const auto StartUnit = QStringLiteral("StartUnit");
 const auto StopUnit = QStringLiteral("StopUnit");
 const auto ResultDone = QStringLiteral("done");
@@ -79,7 +80,7 @@ void SystemdManager::processNextJob()
 
     QDBusPendingCall call = m_systemd->asyncCall(
             (m_jobs.first().type == StopJob) ? Systemd::StopUnit : Systemd::StartUnit,
-            m_jobs.first().unit, Systemd::Replace);
+            m_jobs.first().unit, (m_jobs.first().replace) ? Systemd::Replace : Systemd::Fail);
     QDBusPendingCallWatcher *m_pendingCall = new QDBusPendingCallWatcher(call, this);
     connect(m_pendingCall, &QDBusPendingCallWatcher::finished, this, &SystemdManager::pendingCallFinished);
 }
