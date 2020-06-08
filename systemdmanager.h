@@ -35,11 +35,12 @@ public:
     struct Job {
         QString unit;
         JobType type;
+        bool replace;
 
-        Job(QString unit, JobType type) : unit(unit), type(type) {}
+        Job(QString unit, JobType type, bool replace) : unit(unit), type(type), replace(replace) {}
 
-        static Job start(QString unit) { return Job(unit, StartJob); }
-        static Job stop(QString unit) { return Job(unit, StopJob); }
+        static Job start(QString unit, bool replace = true) { return Job(unit, StartJob, replace); }
+        static Job stop(QString unit, bool replace = true) { return Job(unit, StopJob, replace); }
     };
 
     typedef QList<Job> JobList;

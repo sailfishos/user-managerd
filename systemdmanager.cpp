@@ -18,6 +18,7 @@ const auto Service = QStringLiteral("org.freedesktop.systemd1");
 const auto ManagerPath = QStringLiteral("/org/freedesktop/systemd1");
 const auto ManagerInterface = QStringLiteral("org.freedesktop.systemd1.Manager");
 const auto Replace = QStringLiteral("replace");
+const auto Fail = QStringLiteral("fail");
 const auto StartUnit = QStringLiteral("StartUnit");
 const auto StopUnit = QStringLiteral("StopUnit");
 const auto ResultDone = QStringLiteral("done");
@@ -79,7 +80,7 @@ void SystemdManager::processNextJob()
 
     QDBusPendingCall call = m_systemd->asyncCall(
             (m_jobs.first().type == StopJob) ? Systemd::StopUnit : Systemd::StartUnit,
-            m_jobs.first().unit, Systemd::Replace);
+            m_jobs.first().unit, (m_jobs.first().replace) ? Systemd::Replace : Systemd::Fail);
     QDBusPendingCallWatcher *m_pendingCall = new QDBusPendingCallWatcher(call, this);
     connect(m_pendingCall, &QDBusPendingCallWatcher::finished, this, &SystemdManager::pendingCallFinished);
 }
@@ -107,22 +108,23 @@ void SystemdManager::onJobRemoved(uint id, QDBusObjectPath job, QString unit, QS
 {
     Q_UNUSED(id)
     if (job.path() == m_currentJob) {
-        qCWarning(lcSUM) << "Systemd job" << job.path() << "for unit" << unit
-                         << "ended with result" << result;
-        if (result == Systemd::ResultSkipped) {
-            // This means that the job didn't do anything yet
-            m_currentJob.clear(); // Clear busyness before signal
-            JobList remaining;
-            remaining.swap(m_jobs);
-            emit creatingJobFailed(remaining);
-        } else if (result != Systemd::ResultDone) {
+        if (result != Systemd::ResultDone) {
             // Uh, Houston, we've had a problem
+            qCWarning(lcSUM) << "Systemd" << (m_jobs.first().type == StopJob) ? "stop" : "start" << "job"
+                             << job.path() << "for unit" << unit << "ended with result" << result;
             m_currentJob.clear(); // Clear busyness before signal
-            Job failed = m_jobs.takeFirst();
             JobList remaining;
             remaining.swap(m_jobs);
-            emit unitJobFailed(failed, remaining);
+            if (result == Systemd::ResultSkipped) {
+                // This means that the job didn't do anything yet
+                emit creatingJobFailed(remaining);
+            } else {
+                Job failed = remaining.takeFirst();
+                emit unitJobFailed(failed, remaining);
+            }
         } else {
+            qCDebug(lcSUM) << "Systemd" << (m_jobs.first().type == StopJob) ? "stop" : "start" << "job"
+                           << job.path() << "for unit" << unit << "ended with result" << result;
             Job done = m_jobs.takeFirst();
             emit unitJobFinished(done);
             m_currentJob.clear(); // Clear busyness *after* signal
