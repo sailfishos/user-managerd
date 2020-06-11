@@ -32,6 +32,7 @@ Requires: user-managerd
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh
+%{_datadir}/user-managerd/remove.d
 
 %files devel
 %{_prefix}/include/sailfishusermanager
@@ -49,6 +50,7 @@ make %{?_smp_mflags}
 
 %install
 make -C build INSTALL_ROOT=%{buildroot} install
+mkdir -p %{buildroot}%{_datadir}/user-managerd/remove.d
 
 %pre
 systemctl stop dbus-org.sailfishos.usermanager.service || :
