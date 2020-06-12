@@ -389,6 +389,11 @@ void SailfishUserManager::removeUser(uint uid)
         return;
     }
 
+    if (uid == currentUser()) {
+        sendErrorReply(QDBusError::InvalidArgs, "Can not remove current user");
+        return;
+    }
+
     m_exitTimer->start();
 
     if (!removeHome(uid)) {
