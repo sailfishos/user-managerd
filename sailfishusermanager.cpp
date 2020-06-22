@@ -19,14 +19,20 @@
 #include <QDir>
 #include <QString>
 
-#include <pwd.h>
+#include <errno.h>
 #include <grp.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sailfishaccesscontrol.h>
-#include <systemd/sd-login.h>
+#include <pwd.h>
 #include <qmcecallstate.h>
+#include <sailfishaccesscontrol.h>
+#include <sys/mount.h>
+#include <sys/quota.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/types.h>
+#include <systemd/sd-login.h>
+#include <unistd.h>
+
+namespace {
 
 const char *USER_GROUP = "users";
 const char *GROUPS_USER = "USER_GROUPS";
@@ -46,9 +52,18 @@ const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 const int MAX_USERNAME_LENGTH = 20;
 const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
 const auto USER_REMOVE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/remove.d");
+const quint64 MAXIMUM_QUOTA_LIMIT = 2000000000ULL;
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
+
+QByteArray findHomeDevice()
+{
+    QStorageInfo info(USER_HOME.arg(""));
+    return info.device();
+}
+
+};
 
 SailfishUserManager::SailfishUserManager(QObject *parent) :
     QObject(parent),
@@ -281,6 +296,8 @@ uint SailfishUserManager::addUser(const QString &name)
         return 0;
     }
 
+    setUserLimits(uid);
+
     SailfishUserManagerEntry entry;
     entry.user = user;
     entry.name = name;
@@ -307,6 +324,51 @@ int SailfishUserManager::removeUserFiles(uint uid)
     }
 
     return rv;
+}
+
+/*
+ * Sets user quota limits, if supported by kernel and enabled on /home filesystem
+ */
+void SailfishUserManager::setUserLimits(uint uid)
+{
+    struct statvfs info;
+    memset(&info, 0, sizeof(info));
+    errno = 0;
+    if (statvfs(USER_HOME.arg("").toUtf8().data(), &info) < 0) {
+        qCWarning(lcSUM) << "Could not set limits, could not stat filesystem:" << strerror(errno);
+    } else {
+        // Soft limit of max(20 %, MAXIMUM_QUOTA_LIMIT), soft limit turns into hard after grace period
+        fsblkcnt_t softlimit = info.f_blocks * 20 / 100;
+        if (softlimit > (fsblkcnt_t)(MAXIMUM_QUOTA_LIMIT / info.f_frsize))
+            softlimit = (fsblkcnt_t)(MAXIMUM_QUOTA_LIMIT / info.f_frsize);
+        // Hard limit is 120 % of soft limit
+        fsblkcnt_t hardlimit = softlimit * 120 / 100;
+        qCDebug(lcSUM) << "Setting quota limits for" << uid << "to"
+                       << hardlimit << "and" << softlimit << "blocks of size" << info.f_frsize;
+        // Sets block limits and clears inode limits
+        struct if_dqblk quota = {
+            .dqb_bhardlimit = fs_to_dq_blocks(hardlimit, info.f_frsize),
+            .dqb_bsoftlimit = fs_to_dq_blocks(softlimit, info.f_frsize),
+            .dqb_curspace = 0,
+            .dqb_ihardlimit = 0,
+            .dqb_isoftlimit = 0,
+            .dqb_curinodes = 0,
+            .dqb_btime = 0,
+            .dqb_itime = 0,
+            .dqb_valid = QIF_LIMITS
+        };
+        errno = 0;
+        if (quotactl(QCMD(Q_SETQUOTA, USRQUOTA), findHomeDevice().data(), (uid_t)uid, (caddr_t)&quota) < 0) {
+            if (errno == ENOSYS) {
+                qCWarning(lcSUM) << "Could not set limits, kernel doesn't support it";
+            } else if (errno == ESRCH) {
+                qCWarning(lcSUM) << "Could not set limits, it is not enabled on the filesystem";
+            } else {
+                // Unexpected cases
+                qCWarning(lcSUM) << "Could not set limits:" << strerror(errno);
+            }
+        }
+    }
 }
 
 int SailfishUserManager::removeUserFiles(const char *user)

@@ -39,6 +39,7 @@ private:
     bool removeHome(uint uid);
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);
     static int removeUserFiles(uint uid);
+    static void setUserLimits(uint uid);
 
 signals:
     void userAdded(const SailfishUserManagerEntry &user);
