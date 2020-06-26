@@ -33,6 +33,7 @@ Requires: user-managerd
 %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh
 %{_datadir}/user-managerd/remove.d
+%{_libexecdir}/sdmount
 
 %files devel
 %{_prefix}/include/sailfishusermanager

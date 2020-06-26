@@ -45,11 +45,13 @@ DISTFILES += \
     org.sailfishos.usermanager.service \
     org.sailfishos.usermanager.xml \
     rpm/user-managerd.spec \
-    userdel_local.sh
+    userdel_local.sh \
+    sdmount.service \
+    sdmount
 
 target.path = /usr/bin/
 
-systemd.files = dbus-$${DBUS_SERVICE_NAME}.service
+systemd.files = dbus-$${DBUS_SERVICE_NAME}.service sdmount.service
 systemd.path = /lib/systemd/system/
 
 service.files = $${DBUS_SERVICE_NAME}.service
@@ -67,4 +69,7 @@ include.path = /usr/include/sailfishusermanager
 userdel.files = userdel_local.sh
 userdel.path = /usr/sbin/
 
-INSTALLS += target systemd service conf pkgconfig include userdel
+sdmount.files = sdmount
+sdmount.path = /usr/libexec/
+
+INSTALLS += target systemd service conf pkgconfig include userdel sdmount

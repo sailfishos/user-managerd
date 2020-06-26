@@ -46,6 +46,7 @@ const int MAX_RESERVED_UID = 99999;
 const int OWNER_USER_UID = 100000;
 const auto DEFAULT_TARGET = QStringLiteral("default.target");
 const auto USER_SERVICE = QStringLiteral("user@%1.service");
+const auto SDMOUNT_SERVICE = QStringLiteral("sdmount.service");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
 const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
@@ -572,7 +573,8 @@ void SailfishUserManager::setCurrentUser(uint uid)
                                << SystemdManager::Job::stop(USER_SERVICE.arg(m_currentUid))
                                << SystemdManager::Job::stop(AUTOLOGIN_SERVICE.arg(m_currentUid))
                                << SystemdManager::Job::start(AUTOLOGIN_SERVICE.arg(m_switchUser))
-                               << SystemdManager::Job::start(USER_SERVICE.arg(m_switchUser), false));
+                               << SystemdManager::Job::start(USER_SERVICE.arg(m_switchUser), false)
+                               << SystemdManager::Job::start(SDMOUNT_SERVICE));
     });
 }
 

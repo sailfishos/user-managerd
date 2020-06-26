@@ -1,0 +1,19 @@
+#!/bin/bash
+mounts=$(find  /run/media/*/* -prune)
+DEVICEUSER=$(loginctl list-sessions | grep seat0 | tr -s " " | cut -d " " -f 4)
+for mount in $mounts; do
+    partition=$(findmnt -n $mount | tr -s " " | cut -d " " -f 2)
+    if ! [[ "$mount" == "/run/media/$DEVICEUSER"* ]]; then
+        udisksctl-user unmount -b $partition
+        if [[ "$partition" == "/dev/mmcblk"* ]]; then
+            udisksctl-user mount -b $partition
+        fi
+    fi
+done
+# Lock encrypted cards
+partitions=$(ls /dev/mmcblk1*)
+for partition in $partitions; do
+    if udevadm info $partition | grep -q "ID_FS_TYPE=crypto_LUKS" ; then
+        udisksctl lock -b $partition
+    fi
+done
