@@ -1,0 +1,8 @@
+[Unit]
+After=tmp.mount
+
+[Mount]
+What=tmpfs
+Where=/tmp/guest_home
+Type=tmpfs
+Options=noauto,rw,size=1G,noexec
