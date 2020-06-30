@@ -45,11 +45,12 @@ DISTFILES += \
     org.sailfishos.usermanager.service \
     org.sailfishos.usermanager.xml \
     rpm/user-managerd.spec \
+    tmp-guest_home.mount \
     userdel_local.sh
 
 target.path = /usr/bin/
 
-systemd.files = dbus-$${DBUS_SERVICE_NAME}.service
+systemd.files = dbus-$${DBUS_SERVICE_NAME}.service tmp-guest_home.mount
 systemd.path = /usr/lib/systemd/system/
 
 service.files = $${DBUS_SERVICE_NAME}.service

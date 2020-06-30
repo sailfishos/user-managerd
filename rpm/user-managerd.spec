@@ -28,7 +28,7 @@ Requires: user-managerd
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_unitdir}/*.service
+%{_libdir}/systemd/system/*
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh
