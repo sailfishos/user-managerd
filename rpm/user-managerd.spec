@@ -1,5 +1,5 @@
 Name: user-managerd
-Version: 0.0.1
+Version: 0.5.17
 Release: 1
 Summary: Sailfish user manager daemon
 License: BSD
@@ -28,7 +28,7 @@ Requires: user-managerd
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_unitdir}/*.service
+%{_unitdir}/*
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh

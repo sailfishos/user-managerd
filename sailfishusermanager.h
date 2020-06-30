@@ -34,12 +34,13 @@ public:
 
 private:
     bool addUserToGroups(const QString &user);
-    bool makeHome(const QString &user);
+    bool makeHome(const QString &user, bool suwDone = false);
     bool removeDir(const QString &dir);
     bool removeHome(uint uid);
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);
     static int removeUserFiles(uint uid);
     static void setUserLimits(uint uid);
+    uint addSailfishUser(const QString &user, const QString &name, uint userId = 0);
 
 signals:
     void userAdded(const SailfishUserManagerEntry &user);
@@ -48,6 +49,7 @@ signals:
     void currentUserChanged(uint uid);
     void currentUserChangeFailed(uint uid);
     void aboutToChangeCurrentUser(uint uid);
+    void guestUserEnabled(bool enabled);
 
 public slots:
     QList<SailfishUserManagerEntry> users();
@@ -59,6 +61,7 @@ public slots:
     QStringList usersGroups(uint uid);
     void addToGroups(uint uid, const QStringList &groups);
     void removeFromGroups(uint uid, const QStringList &groups);
+    void enableGuestUser(bool enable);
 
 private slots:
     void exitTimeout();
@@ -71,6 +74,7 @@ private:
     bool checkAccessRights(uint uid_to_modify);
     uid_t checkCallerUid();
     void updateEnvironment(uint uid);
+    void initSystemdManager();
 
     QTimer *m_exitTimer;
     LibUserHelper *m_lu;

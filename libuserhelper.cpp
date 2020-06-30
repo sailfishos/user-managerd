@@ -9,6 +9,7 @@
 
 #include "libuserhelper.h"
 #include "logging.h"
+#include "sailfishusermanagerinterface.h"
 
 #include <libuser/user.h>
 
@@ -16,7 +17,7 @@ LibUserHelper::LibUserHelper()
 {
 }
 
-uint LibUserHelper::addGroup(const QString &group)
+uint LibUserHelper::addGroup(const QString &group, int gid)
 {
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
@@ -30,6 +31,9 @@ uint LibUserHelper::addGroup(const QString &group)
     uint rv = 0;
     struct lu_ent *ent_group = lu_ent_new();
     if (lu_group_default(context, group.toUtf8(), false, ent_group)) {
+        if (gid)
+            lu_ent_set_id(ent_group, LU_GIDNUMBER, gid);
+
         if (lu_group_add(context, ent_group, &error)) {
             rv = lu_ent_get_first_id(ent_group, LU_GIDNUMBER);
             if (rv == LU_VALUE_INVALID_ID) {
@@ -170,8 +174,15 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint guid)
     struct lu_ent *ent_user = lu_ent_new();
     if (lu_user_default(context, user.toUtf8(), false, ent_user)) {
         QString fixedName(name);
+        if (guid == SAILFISH_USERMANAGER_GUEST_UID) {
+            // Guest user
+            lu_ent_set_id(ent_user, LU_UIDNUMBER, guid);
+            lu_ent_set_string(ent_user, LU_HOMEDIRECTORY, SAILFISH_USERMANAGER_GUEST_HOME);
+        }
+
         lu_ent_set_id(ent_user, LU_GIDNUMBER, guid);
         lu_ent_set_string(ent_user, LU_GECOS, fixedName.remove(',').toUtf8());
+
         if (lu_user_add(context, ent_user, &error)) {
             rv = lu_ent_get_first_id(ent_user, LU_UIDNUMBER);
             if (rv == LU_VALUE_INVALID_ID) {
@@ -255,7 +266,8 @@ bool LibUserHelper::removeUser(uint uid)
             rv = false;
         }
     } else {
-        qCWarning(lcSUM) << "Could not find user";
+        if (uid != SAILFISH_USERMANAGER_GUEST_UID)
+            qCWarning(lcSUM) << "Could not find user";
         if (error)
             lu_error_free(&error);
         rv = false;
@@ -317,7 +329,8 @@ QString LibUserHelper::homeDir(uint uid)
     if (lu_user_lookup_id(context, uid, ent, &error)) {
         rv = lu_ent_get_first_string(ent, LU_HOMEDIRECTORY);
     } else {
-        qCWarning(lcSUM) << "Could not find user";
+        if (uid != SAILFISH_USERMANAGER_GUEST_UID)
+            qCWarning(lcSUM) << "Could not find user";
         if (error)
             lu_error_free(&error);
     }

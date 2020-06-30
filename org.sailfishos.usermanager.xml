@@ -58,6 +58,12 @@
         <arg direction="in" type="as" name="groups"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.In1" value="QStringList"/>
     </method>
+    <method name="enableGuestUser">
+        <arg direction="in" type="b" name="enable"/>
+    </method>
+    <signal name="guestUserEnabled">
+        <arg type ="b" name="enabled"/>
+    </signal>
   </interface>
 </node>
 
