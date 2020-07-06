@@ -50,7 +50,7 @@ DISTFILES += \
 target.path = /usr/bin/
 
 systemd.files = dbus-$${DBUS_SERVICE_NAME}.service
-systemd.path = /lib/systemd/system/
+systemd.path = /usr/lib/systemd/system/
 
 service.files = $${DBUS_SERVICE_NAME}.service
 service.path = /usr/share/dbus-1/system-services/
