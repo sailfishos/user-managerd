@@ -322,7 +322,7 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
         return 0;
     }
 
-    if (!makeHome(user)) {
+    if (!makeHome(user, userId == SAILFISH_USERMANAGER_GUEST_UID)) {
         m_lu->removeUser(uid);
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), QStringLiteral("Creating user home failed"));
         return 0;
