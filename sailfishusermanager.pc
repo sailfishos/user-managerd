@@ -6,7 +6,7 @@ includedir=${prefix}/include/sailfishusermanager
 Name: sailfishusermanager
 Description: Sailfish user manager daemon development files
 URL: https://github.com/sailfishos/user-management-daemon/
-Version: 0.0.1
+Version: 0.5.16
 Requires: dbus-1
 Libs:
 Cflags: -I${includedir}

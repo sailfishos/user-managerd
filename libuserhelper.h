@@ -16,7 +16,7 @@ class LibUserHelper
 {
 public:
     LibUserHelper();
-    uint addGroup(const QString &group);
+    uint addGroup(const QString &group, int gid = 0);
     bool removeGroup(const QString &group);
     bool addUserToGroup(const QString &user, const QString &group);
     bool removeUserFromGroup(const QString &user, const QString &group);
