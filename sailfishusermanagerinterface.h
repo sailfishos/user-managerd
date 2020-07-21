@@ -15,7 +15,7 @@
 
 #define SAILFISH_USERMANAGER_DBUS_INTERFACE "org.sailfishos.usermanager"
 #define SAILFISH_USERMANAGER_DBUS_OBJECT_PATH "/"
-#define SAILFISH_USERMANAGER_GUEST_UID 111111
+#define SAILFISH_USERMANAGER_GUEST_UID 105000
 #define SAILFISH_USERMANAGER_GUEST_HOME "/tmp/guest_home"
 
 // Luks has eight slots where one slot is reserved for backup
