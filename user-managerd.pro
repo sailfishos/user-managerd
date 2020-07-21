@@ -51,7 +51,7 @@ DISTFILES += \
 target.path = /usr/bin/
 
 systemd.files = dbus-$${DBUS_SERVICE_NAME}.service tmp-guest_home.mount
-systemd.path = $$[QT_INSTALL_LIBS]/systemd/system/
+systemd.path = /usr/lib/systemd/system/
 
 service.files = $${DBUS_SERVICE_NAME}.service
 service.path = /usr/share/dbus-1/system-services/
