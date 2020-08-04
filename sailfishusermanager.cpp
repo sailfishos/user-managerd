@@ -350,7 +350,8 @@ int SailfishUserManager::removeUserFiles(uint uid)
 
     // Execute user removal scripts
     QDir removal(USER_REMOVE_SCRIPT_DIR);
-    for (const QString &entry : removal.entryList(QDir::Files | QDir::Executable)) {
+    for (const QString &entry : removal.entryList(QStringList() << "*.sh",
+                                                  QDir::Files | QDir::Executable, QDir::Name)) {
         int exitCode = QProcess::execute(USER_REMOVE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
         if (exitCode)
             qCWarning(lcSUM) << "User remove script" << USER_REMOVE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
