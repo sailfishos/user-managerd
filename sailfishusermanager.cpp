@@ -305,26 +305,34 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
 {
     uint guid = m_lu->addGroup(user, userId);
     if (!guid) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), QStringLiteral("Creating user group failed"));
+        auto message = QStringLiteral("Creating user group failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), message);
         return 0;
     }
 
     uint uid = m_lu->addUser(user, name, guid);
     if (!uid) {
         m_lu->removeGroup(user);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), QStringLiteral("Adding user failed"));
+        auto message = QStringLiteral("Adding user failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), message);
         return 0;
     }
 
     if (!addUserToGroups(user)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("Adding user to groups failed"));
+        auto message = QStringLiteral("Adding user to groups failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), message);
         return 0;
     }
 
     if (!makeHome(user, userId == SAILFISH_USERMANAGER_GUEST_UID)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), QStringLiteral("Creating user home failed"));
+        auto message = QStringLiteral("Creating user home failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), message);
         return 0;
     }
 
@@ -419,25 +427,31 @@ void SailfishUserManager::removeUser(uint uid)
         return;
 
     if (uid == OWNER_USER_UID) {
-        sendErrorReply(QDBusError::InvalidArgs, "Can not remove device owner");
+        auto message = QStringLiteral("Can not remove device owner");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return;
     }
 
     if (uid == currentUser()) {
-        sendErrorReply(QDBusError::InvalidArgs, "Can not remove current user");
+        auto message = QStringLiteral("Can not remove current user");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return;
     }
 
     m_exitTimer->start();
 
-    if (!removeHome(uid)) {
+    if (uid != SAILFISH_USERMANAGER_GUEST_UID && !removeHome(uid)) {
         qCWarning(lcSUM) << "Removing user home failed";
     }
 
     removeUserFiles(uid);
 
     if (!m_lu->removeUser(uid)) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), QStringLiteral("User remove failed"));
+        auto message = QStringLiteral("User remove failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), message);
     } else {
         emit userRemoved(uid);
     }
@@ -451,7 +465,9 @@ void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
     m_exitTimer->start();
 
     if (!m_lu->modifyUser(uid, new_name)) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("User modify failed"));
+        auto message = QStringLiteral("User modify failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), message);
         return;
     }
 
@@ -853,7 +869,9 @@ void SailfishUserManager::enableGuestUser(bool enable)
         }
 
         if (currentUser() == SAILFISH_USERMANAGER_GUEST_UID) {
-            sendErrorReply(QDBusError::InvalidArgs, "Can not remove current user");
+            auto message = QStringLiteral("Can not remove current user");
+            qCWarning(lcSUM) << message;
+            sendErrorReply(QDBusError::InvalidArgs, message);
             return;
         }
 
