@@ -248,20 +248,24 @@ bool LibUserHelper::removeUser(uint uid)
             error = nullptr;
         }
 
-        if (rv && lu_group_lookup_id(context, lu_ent_get_first_id(ent, LU_GIDNUMBER), entGroup, &error)) {
-            if (lu_group_delete(context, entGroup, &error)) {
-                if (!lu_user_delete(context, ent, &error)) {
-                    qCWarning(lcSUM) << "User delete failed:" << lu_strerror(error);
-                    lu_error_free(&error);
-                    rv = false;
-                }
-            } else {
+        if (lu_group_lookup_id(context, lu_ent_get_first_id(ent, LU_GIDNUMBER), entGroup, &error)) {
+            if (!lu_group_delete(context, entGroup, &error)) {
                 qCWarning(lcSUM) << "Group delete failed:" << lu_strerror(error);
                 lu_error_free(&error);
+                error = nullptr;
                 rv = false;
             }
         } else {
             qCWarning(lcSUM) << "Could not find group";
+            if (error) {
+                lu_error_free(&error);
+                error = nullptr;
+            }
+            rv = false;
+        }
+
+        if (!lu_user_delete(context, ent, &error)) {
+            qCWarning(lcSUM) << "User delete failed:" << lu_strerror(error);
             lu_error_free(&error);
             rv = false;
         }
