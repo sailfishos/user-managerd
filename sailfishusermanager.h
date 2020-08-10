@@ -34,7 +34,7 @@ public:
 
 private:
     bool addUserToGroups(const QString &user);
-    bool makeHome(const QString &user, bool suwDone = false);
+    bool makeHome(const QString &user);
     bool removeDir(const QString &dir);
     bool removeHome(uint uid);
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);

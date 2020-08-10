@@ -50,7 +50,7 @@ DISTFILES += \
 
 target.path = /usr/bin/
 
-systemd.files = dbus-$${DBUS_SERVICE_NAME}.service tmp-guest_home.mount
+systemd.files = dbus-$${DBUS_SERVICE_NAME}.service tmp-guest_home.mount guest_disable_suw.service
 systemd.path = /usr/lib/systemd/system/
 
 service.files = $${DBUS_SERVICE_NAME}.service

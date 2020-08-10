@@ -28,7 +28,11 @@ Requires: user-managerd
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_unitdir}/*
+%{_unitdir}/dbus-org.sailfishos.usermanager.service
+%{_unitdir}/tmp-guest_home.mount
+%{_unitdir}/*/tmp-guest_home.mount
+%{_unitdir}/guest_disable_suw.service
+%{_unitdir}/*/guest_disable_suw.service
 %{_datadir}/dbus-1/system-services/*.service
 %{_sysconfdir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh
@@ -51,6 +55,11 @@ make %{?_smp_mflags}
 %install
 make -C build INSTALL_ROOT=%{buildroot} install
 mkdir -p %{buildroot}%{_datadir}/user-managerd/remove.d
+mkdir -p %{buildroot}%{_unitdir}/user@105000.service.wants/
+ln -s ../tmp-guest_home.mount %{buildroot}%{_unitdir}/user@105000.service.wants/
+mkdir -p %{buildroot}%{_unitdir}/autologin@105000.service.wants/
+ln -s ../tmp-guest_home.mount %{buildroot}%{_unitdir}/autologin@105000.service.wants/
+ln -s ../guest_disable_suw.service %{buildroot}%{_unitdir}/autologin@105000.service.wants/
 
 %pre
 systemctl stop dbus-org.sailfishos.usermanager.service || :
