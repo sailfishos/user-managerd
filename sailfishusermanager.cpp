@@ -237,7 +237,9 @@ uint SailfishUserManager::addUser(const QString &name)
     struct group *grent = getgrnam(USER_GROUP);
     if (grent) {
         for (int i = 0; grent->gr_mem[i]; i++) {
-            if (getpwnam(grent->gr_mem[i]))
+            // Guest user is not counted to number of users that can be created
+            struct passwd *pw = getpwnam(grent->gr_mem[i]);
+            if (pw && (pw->pw_uid != SAILFISH_USERMANAGER_GUEST_UID))
                 count++;
         }
     }
