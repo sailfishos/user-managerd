@@ -40,8 +40,6 @@ const auto GROUPS_IDS_FILE = QStringLiteral("/usr/share/sailfish-setup/group.ids
 const auto SKEL_DIR = QStringLiteral("/etc/skel");
 const auto USER_HOME = QStringLiteral("/home/%1");
 const auto GUEST_USER = QStringLiteral("sailfish-guest");
-const auto USER_HOME_STARTUPWIZARD_DONE = QStringLiteral("%1/.jolla-startupwizard-done");
-const auto USER_HOME_USERSESSION_DONE = QStringLiteral("%1/.jolla-startupwizard-usersession-done");
 const int HOME_MODE = 0700;
 const int QUIT_TIMEOUT = 60 * 1000; // One minute quit timeout
 const int SWITCHING_DELAY = 1000; // One second time before changing currentUser
@@ -50,7 +48,6 @@ const int OWNER_USER_UID = 100000;
 const auto DEFAULT_TARGET = QStringLiteral("default.target");
 const auto USER_SERVICE = QStringLiteral("user@%1.service");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
-const auto GUEST_HOME_SERVICE = QStringLiteral("tmp-guest_home.mount");
 const auto ENVIRONMENT_FILE = QStringLiteral("/etc/environment");
 const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 const int MAX_USERNAME_LENGTH = 20;
@@ -200,7 +197,7 @@ bool SailfishUserManager::copyDir(const QString &source, const QString &destinat
     return true;
 }
 
-bool SailfishUserManager::makeHome(const QString &user, bool suwDone)
+bool SailfishUserManager::makeHome(const QString &user)
 {
     struct passwd *pw = getpwnam(user.toUtf8());
     if (!pw) {
@@ -208,32 +205,10 @@ bool SailfishUserManager::makeHome(const QString &user, bool suwDone)
         return false;
     }
 
-    QString destination;
-    if (pw->pw_uid == SAILFISH_USERMANAGER_GUEST_UID)
-        destination = SAILFISH_USERMANAGER_GUEST_HOME;
-    else
-        destination = QString(USER_HOME).arg(user);
+    QString destination = pw->pw_dir;
 
     if (!copyDir(SKEL_DIR, destination, pw->pw_uid, pw->pw_gid))
         return false;
-
-    if (suwDone) {
-        // Touch startupwizard done marker files
-        QFile suw(USER_HOME_STARTUPWIZARD_DONE.arg(destination));
-        if (!suw.open(QIODevice::WriteOnly))
-            qCWarning(lcSUM) << "Failed to open file for writing";
-        suw.close();
-        if (chown(suw.fileName().toUtf8(), pw->pw_uid, pw->pw_gid)) {
-            qCWarning(lcSUM) << "Failed to change file ownership";
-        }
-        QFile us(USER_HOME_USERSESSION_DONE.arg(destination));
-        if (!us.open(QIODevice::WriteOnly))
-            qCWarning(lcSUM) << "Failed to open file for writing";
-        us.close();
-        if (chown(us.fileName().toUtf8(), pw->pw_uid, pw->pw_gid)) {
-            qCWarning(lcSUM) << "Failed to change file ownership";
-        }
-    }
 
     if (chmod(destination.toUtf8(), HOME_MODE)) {
         qCWarning(lcSUM) << "Home directory permissions change failed";
@@ -305,26 +280,34 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
 {
     uint guid = m_lu->addGroup(user, userId);
     if (!guid) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), QStringLiteral("Creating user group failed"));
+        auto message = QStringLiteral("Creating user group failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), message);
         return 0;
     }
 
     uint uid = m_lu->addUser(user, name, guid);
     if (!uid) {
         m_lu->removeGroup(user);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), QStringLiteral("Adding user failed"));
+        auto message = QStringLiteral("Adding user failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), message);
         return 0;
     }
 
     if (!addUserToGroups(user)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("Adding user to groups failed"));
+        auto message = QStringLiteral("Adding user to groups failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), message);
         return 0;
     }
 
-    if (!makeHome(user, userId == SAILFISH_USERMANAGER_GUEST_UID)) {
+    if (userId != SAILFISH_USERMANAGER_GUEST_UID && !makeHome(user)) {
         m_lu->removeUser(uid);
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), QStringLiteral("Creating user home failed"));
+        auto message = QStringLiteral("Creating user home failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), message);
         return 0;
     }
 
@@ -419,25 +402,31 @@ void SailfishUserManager::removeUser(uint uid)
         return;
 
     if (uid == OWNER_USER_UID) {
-        sendErrorReply(QDBusError::InvalidArgs, "Can not remove device owner");
+        auto message = QStringLiteral("Can not remove device owner");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return;
     }
 
     if (uid == currentUser()) {
-        sendErrorReply(QDBusError::InvalidArgs, "Can not remove current user");
+        auto message = QStringLiteral("Can not remove current user");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QDBusError::InvalidArgs, message);
         return;
     }
 
     m_exitTimer->start();
 
-    if (!removeHome(uid)) {
+    if (uid != SAILFISH_USERMANAGER_GUEST_UID && !removeHome(uid)) {
         qCWarning(lcSUM) << "Removing user home failed";
     }
 
     removeUserFiles(uid);
 
     if (!m_lu->removeUser(uid)) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), QStringLiteral("User remove failed"));
+        auto message = QStringLiteral("User remove failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserRemoveFailed), message);
     } else {
         emit userRemoved(uid);
     }
@@ -451,7 +440,9 @@ void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
     m_exitTimer->start();
 
     if (!m_lu->modifyUser(uid, new_name)) {
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), QStringLiteral("User modify failed"));
+        auto message = QStringLiteral("User modify failed");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserModifyFailed), message);
         return;
     }
 
@@ -605,6 +596,10 @@ void SailfishUserManager::setCurrentUser(uint uid)
 
     m_switchUser = uid;
 
+    // Remove guest user's extra data, if there is any left from a previous session
+    if (uid == SAILFISH_USERMANAGER_GUEST_UID)
+        removeUserFiles(SAILFISH_USERMANAGER_GUEST_UID);
+
     QTimer::singleShot(SWITCHING_DELAY, [this] {
         if (!m_systemd) {
             initSystemdManager();
@@ -637,12 +632,6 @@ void SailfishUserManager::onUnitJobFinished(SystemdManager::Job &job)
         // Backup plan
         if (m_currentUid != currentUser())
             emit currentUserChanged(currentUser());
-    } else if (job.type == SystemdManager::StartJob && job.unit == GUEST_HOME_SERVICE) {
-        if (addSailfishUser(GUEST_USER, "", SAILFISH_USERMANAGER_GUEST_UID))
-            emit guestUserEnabled(true);
-    } else if (job.type == SystemdManager::StopJob && job.unit == GUEST_HOME_SERVICE) {
-        removeUser(SAILFISH_USERMANAGER_GUEST_UID);
-        emit guestUserEnabled(false);
     }// else it's not interesting
 }
 
@@ -718,9 +707,9 @@ void SailfishUserManager::updateEnvironment(uint uid)
     if (uid == SAILFISH_USERMANAGER_GUEST_UID)
         return;
 
-    // Remove used guest user
+    // Remove guest user's extra data
     if (m_currentUid == SAILFISH_USERMANAGER_GUEST_UID)
-        removeUser(SAILFISH_USERMANAGER_GUEST_UID);
+        removeUserFiles(SAILFISH_USERMANAGER_GUEST_UID);
 
     if (uid < MAX_RESERVED_UID || uid > MAX_RESERVED_UID + SAILFISH_USERMANAGER_MAX_USERS) {
         // This could be also an assert but it only results in device booting up as wrong user
@@ -834,32 +823,14 @@ void SailfishUserManager::enableGuestUser(bool enable)
     if (!checkAccessRights(SAILFISH_USERMANAGER_GUEST_UID))
         return;
 
-    struct passwd *pwd = getpwuid(SAILFISH_USERMANAGER_GUEST_UID);
-
-    if (enable) {
-        if (pwd) {
-            // Already enabled
-            return;
+    if (enable != (bool)getpwuid(SAILFISH_USERMANAGER_GUEST_UID)) {
+        if (enable) {
+            if (addSailfishUser(GUEST_USER, "", SAILFISH_USERMANAGER_GUEST_UID))
+                emit guestUserEnabled(true);
+        } else {
+            removeUser(SAILFISH_USERMANAGER_GUEST_UID);
+            if (!getpwuid(SAILFISH_USERMANAGER_GUEST_UID))
+                emit guestUserEnabled(false);
         }
-
-        // Start by mounting guest home
-        if (!m_systemd)
-            initSystemdManager();
-        m_systemd->addUnitJobs(SystemdManager::JobList() << SystemdManager::Job::start(GUEST_HOME_SERVICE));
-    } else {
-        if (!pwd) {
-            // Already disabled
-            return;
-        }
-
-        if (currentUser() == SAILFISH_USERMANAGER_GUEST_UID) {
-            sendErrorReply(QDBusError::InvalidArgs, "Can not remove current user");
-            return;
-        }
-
-        // First unmount guest home
-        if (!m_systemd)
-            initSystemdManager();
-        m_systemd->addUnitJobs(SystemdManager::JobList() << SystemdManager::Job::stop(GUEST_HOME_SERVICE));
     }
 }

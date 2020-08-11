@@ -1,8 +1,10 @@
 [Unit]
-After=tmp.mount
+Before=user@105000.service
+PartOf=user@105000.service
+Before=autologin@105000.service create-home@105000.service hw-groups@105000.service
 
 [Mount]
 What=tmpfs
 Where=/tmp/guest_home
 Type=tmpfs
-Options=noauto,rw,size=1G,noexec
+Options=noauto,rw,size=1G,noexec,uid=105000,gid=105000
