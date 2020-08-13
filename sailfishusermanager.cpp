@@ -278,17 +278,9 @@ uint SailfishUserManager::addUser(const QString &name)
     return addSailfishUser(user, name);
 }
 
-uint SailfishUserManager::addSailfishUser(const QString &user, const QString &name, uint userId)
+uint SailfishUserManager::addSailfishUser(const QString &user, const QString &name, uint userId, const QString &home)
 {
-    uint guid = m_lu->addGroup(user, userId);
-    if (!guid) {
-        auto message = QStringLiteral("Creating user group failed");
-        qCWarning(lcSUM) << message;
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGroupCreateFailed), message);
-        return 0;
-    }
-
-    uint uid = m_lu->addUser(user, name, guid);
+    uint uid = m_lu->addUser(user, name, userId, home);
     if (!uid) {
         m_lu->removeGroup(user);
         auto message = QStringLiteral("Adding user failed");
@@ -827,7 +819,7 @@ void SailfishUserManager::enableGuestUser(bool enable)
 
     if (enable != (bool)getpwuid(SAILFISH_USERMANAGER_GUEST_UID)) {
         if (enable) {
-            if (addSailfishUser(GUEST_USER, "", SAILFISH_USERMANAGER_GUEST_UID))
+            if (addSailfishUser(GUEST_USER, "", SAILFISH_USERMANAGER_GUEST_UID, SAILFISH_USERMANAGER_GUEST_HOME))
                 emit guestUserEnabled(true);
         } else {
             removeUser(SAILFISH_USERMANAGER_GUEST_UID);
