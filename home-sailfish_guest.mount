@@ -5,6 +5,6 @@ Before=autologin@105000.service create-home@105000.service hw-groups@105000.serv
 
 [Mount]
 What=tmpfs
-Where=/tmp/guest_home
+Where=/home/sailfish_guest
 Type=tmpfs
 Options=noauto,rw,size=1G,noexec,uid=105000,gid=105000
