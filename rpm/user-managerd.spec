@@ -29,8 +29,8 @@ Requires: user-managerd
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_unitdir}/dbus-org.sailfishos.usermanager.service
-%{_unitdir}/tmp-guest_home.mount
-%{_unitdir}/*/tmp-guest_home.mount
+%{_unitdir}/home-sailfish_guest.mount
+%{_unitdir}/*/home-sailfish_guest.mount
 %{_unitdir}/guest_disable_suw.service
 %{_unitdir}/*/guest_disable_suw.service
 %{_datadir}/dbus-1/system-services/*.service
@@ -56,9 +56,9 @@ make %{?_smp_mflags}
 make -C build INSTALL_ROOT=%{buildroot} install
 mkdir -p %{buildroot}%{_datadir}/user-managerd/remove.d
 mkdir -p %{buildroot}%{_unitdir}/user@105000.service.wants/
-ln -s ../tmp-guest_home.mount %{buildroot}%{_unitdir}/user@105000.service.wants/
+ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/user@105000.service.wants/
 mkdir -p %{buildroot}%{_unitdir}/autologin@105000.service.wants/
-ln -s ../tmp-guest_home.mount %{buildroot}%{_unitdir}/autologin@105000.service.wants/
+ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/autologin@105000.service.wants/
 ln -s ../guest_disable_suw.service %{buildroot}%{_unitdir}/autologin@105000.service.wants/
 
 %pre
