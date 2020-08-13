@@ -1,12 +1,12 @@
 [Unit]
 Description=Disable guest user startup wizard
-RequiresMountsFor=/tmp/guest_home
-PartOf=tmp-guest_home.mount
+RequiresMountsFor=/home/sailfish_guest
+PartOf=home-sailfish_guest.mount
 After=create-home@105000.service
 Before=autologin@105000.service user@105000.service
 
 [Service]
 Type=oneshot
 User=sailfish-guest
-ExecStart=/bin/touch /tmp/guest_home/.jolla-startupwizard-done
-ExecStart=/bin/touch /tmp/guest_home/.jolla-startupwizard-usersession-done
+ExecStart=/bin/touch /home/sailfish_guest/.jolla-startupwizard-done
+ExecStart=/bin/touch /home/sailfish_guest/.jolla-startupwizard-usersession-done
