@@ -9,7 +9,6 @@
 
 #include "libuserhelper.h"
 #include "logging.h"
-#include "sailfishusermanagerinterface.h"
 
 #include <libuser/user.h>
 
@@ -160,7 +159,7 @@ bool LibUserHelper::removeUserFromGroup(const QString &user, const QString &grou
     return rv;
 }
 
-uint LibUserHelper::addUser(const QString &user, const QString& name, uint guid)
+uint LibUserHelper::addUser(const QString &user, const QString& name, uint uid, const QString &home)
 {
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
@@ -170,17 +169,24 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint guid)
         return 0;
     }
 
+    uint gid = addGroup(user, uid);
+    if (!gid)
+        return 0;
+
     uint rv = 0;
     struct lu_ent *ent_user = lu_ent_new();
     if (lu_user_default(context, user.toUtf8(), false, ent_user)) {
         QString fixedName(name);
-        if (guid == SAILFISH_USERMANAGER_GUEST_UID) {
-            // Guest user
-            lu_ent_set_id(ent_user, LU_UIDNUMBER, guid);
-            lu_ent_set_string(ent_user, LU_HOMEDIRECTORY, SAILFISH_USERMANAGER_GUEST_HOME);
+        if (uid) {
+            // Explicitly selected uid
+            lu_ent_set_id(ent_user, LU_UIDNUMBER, uid);
+        }
+        if (!home.isEmpty()) {
+            // Explicitly selected home
+            lu_ent_set_string(ent_user, LU_HOMEDIRECTORY, home.toUtf8().constData());
         }
 
-        lu_ent_set_id(ent_user, LU_GIDNUMBER, guid);
+        lu_ent_set_id(ent_user, LU_GIDNUMBER, gid);
         lu_ent_set_string(ent_user, LU_GECOS, fixedName.remove(',').toUtf8());
 
         if (lu_user_add(context, ent_user, &error)) {
@@ -189,6 +195,10 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint guid)
                 qCWarning(lcSUM) << "Invalid user id";
                 rv = 0;
             }
+            if (uid && (rv != uid))
+                qCWarning(lcSUM) << "User id" << rv << "is different from requested id" << uid;
+            if (gid != rv)
+                qCWarning(lcSUM) << "Group id" << gid << "is not the same as user id" << rv;
         } else {
             qCWarning(lcSUM) << "Adding user failed:" << lu_strerror(error);
             lu_error_free(&error);
@@ -270,8 +280,7 @@ bool LibUserHelper::removeUser(uint uid)
             rv = false;
         }
     } else {
-        if (uid != SAILFISH_USERMANAGER_GUEST_UID)
-            qCWarning(lcSUM) << "Could not find user";
+        qCWarning(lcSUM) << "Could not find user";
         if (error)
             lu_error_free(&error);
         rv = false;
@@ -333,8 +342,7 @@ QString LibUserHelper::homeDir(uint uid)
     if (lu_user_lookup_id(context, uid, ent, &error)) {
         rv = lu_ent_get_first_string(ent, LU_HOMEDIRECTORY);
     } else {
-        if (uid != SAILFISH_USERMANAGER_GUEST_UID)
-            qCWarning(lcSUM) << "Could not find user";
+        qCWarning(lcSUM) << "Could not find user";
         if (error)
             lu_error_free(&error);
     }

@@ -40,7 +40,7 @@ private:
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);
     static int removeUserFiles(uint uid);
     static void setUserLimits(uint uid);
-    uint addSailfishUser(const QString &user, const QString &name, uint userId = 0);
+    uint addSailfishUser(const QString &user, const QString &name, uint userId = 0, const QString &home = QString());
 
 signals:
     void userAdded(const SailfishUserManagerEntry &user);
