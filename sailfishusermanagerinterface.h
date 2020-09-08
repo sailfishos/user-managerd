@@ -30,6 +30,7 @@
 #define SailfishUserManagerErrorUserModifyFailed "org.sailfishos.usermanager.Error.UserModifyFailed"
 #define SailfishUserManagerErrorUserRemoveFailed "org.sailfishos.usermanager.Error.UserRemoveFailed"
 #define SailfishUserManagerErrorGetUidFailed "org.sailfishos.usermanager.Error.GetUidFailed"
+#define SailfishUserManagerErrorGetUuidFailed "org.sailfishos.usermanager.Error.GetUuidFailed"
 #define SailfishUserManagerErrorUserNotFound "org.sailfishos.usermanager.Error.UserNotFound"
 #define SailfishUserManagerErrorAddToGroupFailed "org.sailfishos.usermanager.Error.AddToGroupFailed"
 #define SailfishUserManagerErrorRemoveFromGroupFailed "org.sailfishos.usermanager.Error.RemoveFromGroupFailed"

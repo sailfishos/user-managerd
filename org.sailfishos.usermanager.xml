@@ -43,6 +43,13 @@
     <method name="currentUser">
         <arg direction="out" type="u" name="uid"/>
     </method>
+    <method name="currentUserUuid">
+        <arg direction="out" type="s" name="uuid"/>
+    </method>
+    <method name="userUuid">
+        <arg direction="in" type="u" name="uid"/>
+        <arg direction="out" type="s" name="uuid"/>
+    </method>
     <method name="usersGroups">
         <arg direction="in" type="u" name="uid"/>
         <arg direction="out" type="as" name="groups"/>

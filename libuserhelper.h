@@ -22,9 +22,10 @@ public:
     bool removeUserFromGroup(const QString &user, const QString &group);
     uint addUser(const QString &user, const QString &name, uint uid = 0, const QString &home = QString());
     bool removeUser(uint uid);
-    bool modifyUser(uint uid, const QString &newName);
+    bool modifyUser(uint uid, const QString &newName) const;
     QString homeDir(uint uid);
     QStringList groups(uint uid);
+    QString getUserUuid(uint uid) const;
 };
 
 #endif // LIBUSERHELPER_H

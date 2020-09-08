@@ -58,6 +58,8 @@ public slots:
     void modifyUser(uint uid, const QString &new_name);
     void setCurrentUser(uint uid);
     uint currentUser();
+    QString currentUserUuid();
+    QString userUuid(uint uid);
     QStringList usersGroups(uint uid);
     void addToGroups(uint uid, const QStringList &groups);
     void removeFromGroups(uint uid, const QStringList &groups);
