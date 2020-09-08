@@ -695,6 +695,28 @@ uint SailfishUserManager::currentUser()
     return uid;
 }
 
+QString SailfishUserManager::currentUserUuid()
+{
+    const auto uid = currentUser();
+    if (uid == SAILFISH_UNDEFINED_UID) {
+        return QString();
+    }
+    return userUuid(uid);
+}
+
+QString SailfishUserManager::userUuid(uint uid)
+{
+    m_exitTimer->start();
+    const auto userUuid = m_lu->getUserUuid(uid);
+    if (userUuid.isEmpty()) {
+        auto message = QStringLiteral("Failed to get user uuid");
+        qCWarning(lcSUM) << message;
+        sendErrorReply(QStringLiteral(SailfishUserManagerErrorGetUuidFailed), message);
+        return QString();
+    }
+    return userUuid;
+}
+
 void SailfishUserManager::updateEnvironment(uint uid)
 {
     // Nothing here for guest

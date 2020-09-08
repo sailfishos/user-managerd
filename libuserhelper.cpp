@@ -11,6 +11,7 @@
 #include "logging.h"
 
 #include <libuser/user.h>
+#include <QUuid>
 
 LibUserHelper::LibUserHelper()
 {
@@ -161,6 +162,10 @@ bool LibUserHelper::removeUserFromGroup(const QString &user, const QString &grou
 
 uint LibUserHelper::addUser(const QString &user, const QString& name, uint uid, const QString &home)
 {
+    if (name.contains(',') || name.contains(':')) {
+        qCWarning(lcSUM) << "Invalid user name, comma or colon is not allowed";
+        return 0;
+    }
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
     if (!context) {
@@ -176,7 +181,9 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint uid, 
     uint rv = 0;
     struct lu_ent *ent_user = lu_ent_new();
     if (lu_user_default(context, user.toUtf8(), false, ent_user)) {
-        QString fixedName(name);
+        QString nameUuid(name);
+        nameUuid += ',';
+        nameUuid += QUuid::createUuid().toString();
         if (uid) {
             // Explicitly selected uid
             lu_ent_set_id(ent_user, LU_UIDNUMBER, uid);
@@ -187,7 +194,7 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint uid, 
         }
 
         lu_ent_set_id(ent_user, LU_GIDNUMBER, gid);
-        lu_ent_set_string(ent_user, LU_GECOS, fixedName.remove(',').toUtf8());
+        lu_ent_set_string(ent_user, LU_GECOS, nameUuid.toUtf8());
 
         if (lu_user_add(context, ent_user, &error)) {
             rv = lu_ent_get_first_id(ent_user, LU_UIDNUMBER);
@@ -293,8 +300,12 @@ bool LibUserHelper::removeUser(uint uid)
     return rv;
 }
 
-bool LibUserHelper::modifyUser(uint uid, const QString &newName)
+bool LibUserHelper::modifyUser(uint uid, const QString &newName) const
 {
+    if (newName.contains(',') || newName.contains(':')) {
+        qCWarning(lcSUM) << "Invalid new user name, comma or colon is not allowed";
+        return false;
+    }
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
     if (!context) {
@@ -307,8 +318,19 @@ bool LibUserHelper::modifyUser(uint uid, const QString &newName)
     struct lu_ent *ent = lu_ent_new();
 
     if (lu_user_lookup_id(context, uid, ent, &error)) {
-        QString fixedName(newName);
-        lu_ent_set_string(ent, LU_GECOS, fixedName.remove(',').remove(':').toUtf8());
+        QString nameUuid(newName);
+        // get uuid from gecos field
+        auto list = QString(lu_ent_get_first_string(ent, LU_GECOS)).split(',');
+        if (list.size() > 1 && !list[1].isEmpty()) {
+            // get old user uuid
+            nameUuid += ',';
+            nameUuid += list[1];
+        } else {
+            // create user uuid if not found in user db
+            if (!nameUuid.endsWith(',')) nameUuid += ',';
+            nameUuid += QUuid::createUuid().toString();
+        }
+        lu_ent_set_string(ent, LU_GECOS, nameUuid.toUtf8());
         if (!lu_user_modify(context, ent, &error)) {
             qCWarning(lcSUM) << "User modify failed:" << lu_strerror(error);
             lu_error_free(&error);
@@ -387,4 +409,56 @@ QStringList LibUserHelper::groups(uint uid)
     lu_end(context);
 
     return rv;
+}
+
+QString LibUserHelper::getUserUuid(uint uid) const
+{
+    struct lu_error *error = nullptr;
+    struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
+    if (!context) {
+        qCWarning(lcSUM) << "Error creating context:" << lu_strerror(error);
+        lu_error_free(&error);
+        return QString();
+    }
+
+    struct lu_ent *ent = lu_ent_new();
+
+    QString userUuid;
+    if (lu_user_lookup_id(context, uid, ent, &error)) {
+        QString gecos = lu_ent_get_first_string(ent, LU_GECOS);
+        const auto list = gecos.split(',');
+        if (list.size() > 1 && !list[1].isEmpty()) {
+            userUuid = list[1];
+        } else {
+            // try to generate user uuid
+            if (modifyUser(uid, list.count() >= 1 ? list[0] : QString())) {
+                struct lu_ent *ent_new = lu_ent_new();
+                if (lu_user_lookup_id(context, uid, ent_new, &error)) {
+                    gecos = lu_ent_get_first_string(ent_new, LU_GECOS);
+                    lu_ent_free(ent_new);
+                    const auto list = gecos.split(',');
+                    if (list.size() > 1 && !list[1].isEmpty()) {
+                        userUuid = list[1];
+                    }
+                } else {
+                    qCWarning(lcSUM) << "Could not find user after adding uuid";
+                    if (error) {
+                        qCWarning(lcSUM) << "Could not find user after adding uuid" << lu_strerror(error);
+                        lu_error_free(&error);
+                    }
+                }
+            }
+        }
+    } else {
+        qCWarning(lcSUM) << "Could not find user";
+        if (error) {
+            qCWarning(lcSUM) << "Could not find user" << lu_strerror(error);
+            lu_error_free(&error);
+        }
+    }
+
+    lu_ent_free(ent);
+    lu_end(context);
+
+    return userUuid;
 }
