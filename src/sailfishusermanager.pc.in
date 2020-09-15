@@ -1,0 +1,7 @@
+Name: sailfishusermanager
+Description: Sailfish user manager daemon development files
+URL: https://github.com/sailfishos/user-managerd/
+Version: @VERSION@
+Requires: dbus-1
+Libs:
+Cflags: -I@INCLUDEDIR@

@@ -1,0 +1,9 @@
+Makefile
+*.list
+*.o
+/src/moc_*.cpp
+/src/usermanager_adaptor.*
+/src/user-managerd
+/src/sailfishusermanager.pc
+/installroot/
+/RPMS/

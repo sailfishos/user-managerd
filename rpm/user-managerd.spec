@@ -1,10 +1,10 @@
 Name: user-managerd
-Version: 0.5.17
+Version: 0.8.0
 Release: 1
 Summary: Sailfish user manager daemon
 License: BSD
 Source0: %{name}-%{version}.tar.gz
-URL: https://github.com/sailfishos/user-management-daemon.git
+URL: https://github.com/sailfishos/user-managerd/
 BuildRequires: pkgconfig(Qt5Core)
 BuildRequires: pkgconfig(Qt5DBus)
 BuildRequires: pkgconfig(libuser)
@@ -43,17 +43,15 @@ Requires: user-managerd
 %{_libdir}/pkgconfig/sailfishusermanager.pc
 
 %prep
-%setup -q -n %{name}-%{version}
-export VERSION=`echo %{version} | sed 's/+.*//'`
-sed -i "s/^Version: .*/Version: "${VERSION}"/" sailfishusermanager.pc
+%autosetup -n %{name}-%{version}
 
 %build
-mkdir -p build && cd build
-%qmake5 DEFINES+='TARGET_ARCH=\\\"\"%{_target_cpu}\"\\\"' -recursive ..
+%qmake5 "VERSION=%{version}"
 make %{?_smp_mflags}
 
 %install
-make -C build INSTALL_ROOT=%{buildroot} install
+%qmake5_install
+
 mkdir -p %{buildroot}%{_datadir}/user-managerd/remove.d
 mkdir -p %{buildroot}%{_unitdir}/user@105000.service.wants/
 ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/user@105000.service.wants/
