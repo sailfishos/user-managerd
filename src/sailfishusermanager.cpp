@@ -66,6 +66,31 @@ QByteArray findHomeDevice()
 
 };
 
+/* Try to keep documentation inside 80 character limit, please. */
+
+/*!
+  \class SailfishUserManager
+  \inmodule Sailfish User Manager Daemon
+
+  \brief The SailfishUserManager provides tools for user management.
+
+  This is a D-Bus interface to list, create, remove and modify users. It is
+  provided by \c org.sailfishos.usermanager service on system bus with path \c
+  / and interface \c org.sailfishos.usermanager.
+
+  Useful defines, \l SailfishUserManagerEntry struct and serializing operators
+  are provided by \l <sailfishusermanagerinterface.h>. It can be used directly
+  with Qt projects utilizing this interface.
+
+  Some operations may return \c QDBusError::AccessDenied if caller is not
+  authorized to do them and \c QDBusError::InvalidArgs if arguments are not
+  acceptable.
+ */
+
+/*!
+  \brief Constructs SailfishUserManager, for internal user only.
+  \internal
+ */
 SailfishUserManager::SailfishUserManager(QObject *parent) :
     QObject(parent),
     m_lu(new LibUserHelper()),
@@ -92,6 +117,10 @@ SailfishUserManager::SailfishUserManager(QObject *parent) :
     m_exitTimer->start(QUIT_TIMEOUT);
 }
 
+/*!
+  \brief Destructs SailfishUserManager, for internal user only.
+  \internal
+ */
 SailfishUserManager::~SailfishUserManager()
 {
     delete m_lu;
@@ -109,6 +138,13 @@ void SailfishUserManager::exitTimeout()
     }
 }
 
+/*!
+  \brief List users on device.
+
+  Returns list of \l SailfishUserManagerEntry structs.
+
+  If list of users can not be fetched this returns error \c QDBusError::Failed.
+ */
 QList<SailfishUserManagerEntry> SailfishUserManager::users()
 {
     m_exitTimer->start();
@@ -218,6 +254,23 @@ bool SailfishUserManager::makeHome(const QString &user)
     return true;
 }
 
+/*!
+  \brief Creates user with \a name as real name.
+
+  New users can not be created if there are already maximum number of users.
+  \e {Guest user} is not counted to this maximum. \a name must not be empty and
+  it may not contain \c : or \c , characters. In practice it is recommended to
+  only have letters, numbers, spaces, dots and dashes in \a name.
+
+  Returns \e UID (\e {User IDentifier}) of the new user. Use \l users to get
+  \e username if needed.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorMaxUsersReached},
+  \l {D-Bus errors} {SailfishUserManagerErrorUserAddFailed},
+  \l {D-Bus errors} {SailfishUserManagerErrorUserModifyFailed} and
+  \l {D-Bus errors} {SailfishUserManagerErrorHomeCreateFailed}.
+ */
 uint SailfishUserManager::addUser(const QString &name)
 {
     // When adding user there is no uid to modify, use special value instead
@@ -337,8 +390,9 @@ int SailfishUserManager::removeUserFiles(uint uid)
     return rv;
 }
 
-/*
- * Sets user quota limits, if supported by kernel and enabled on /home filesystem
+/*!
+  \brief Sets user quota limits, if supported by kernel and enabled on /home
+  filesystem.
  */
 void SailfishUserManager::setUserLimits(uint uid)
 {
@@ -382,6 +436,10 @@ void SailfishUserManager::setUserLimits(uint uid)
     }
 }
 
+/*!
+  \brief Removes extra files for user, for internal use only.
+  \internal
+ */
 int SailfishUserManager::removeUserFiles(const char *user)
 {
     struct passwd *pwd = getpwnam(user);
@@ -390,6 +448,17 @@ int SailfishUserManager::removeUserFiles(const char *user)
     return EXIT_FAILURE;
 }
 
+/*!
+  \brief Removes user with given \a uid from the system.
+
+  Only \e {additional users} can be removed. Current user or \e {Device owner}
+  can not be removed. See \l enableGuestUser for disabling \e {guest user}.
+
+  \warning Removing a user destroys all data for that user.
+
+  This may return error
+  \l {D-Bus errors} {SailfishUserManagerErrorUserRemoveFailed}.
+ */
 void SailfishUserManager::removeUser(uint uid)
 {
     if (!checkAccessRights(uid))
@@ -426,6 +495,9 @@ void SailfishUserManager::removeUser(uint uid)
     }
 }
 
+/*!
+  \brief Changes real name to \a new_name for user with given \a uid.
+ */
 void SailfishUserManager::modifyUser(uint uid, const QString &new_name)
 {
     if (!checkAccessRights(uid))
@@ -462,9 +534,10 @@ bool SailfishUserManager::removeHome(uint uid)
     return removeDir(home);
 }
 
-/*
- * Gets caller uid and checks it has proper rights.
- * Returns with the uid if ok, otherwise SAILFISH_UDEFINED_UID.
+/*!
+  \brief Gets caller uid and checks it has proper rights.
+
+  Returns with the uid if ok, otherwise \c SAILFISH_UNDEFINED_UID.
  */
 uid_t SailfishUserManager::checkCallerUid()
 {
@@ -496,11 +569,13 @@ uid_t SailfishUserManager::checkCallerUid()
     return uid;
 }
 
-/* Check that calling D-Bus client is allowed to make the operation
- *
- * uid_to_modify is uid of the user that is going to be changed or removed.
- * Special value SAILFISH_UNDEFINED_UID can be used to denote non-existing user
- * that does not match to calling process' user but is in the valid range.
+/*!
+  \brief Check that calling D-Bus client is allowed to make the operation.
+
+  \a uid_to_modify is \e UID of the user that is going to be changed or
+  removed. Special value \c SAILFISH_UNDEFINED_UID can be used to denote
+  non-existing user that does not match to calling process' user but is in the
+  valid range.
  */
 bool SailfishUserManager::checkAccessRights(uint uid_to_modify) {
     // Test that uid is in the valid range
@@ -536,6 +611,17 @@ void SailfishUserManager::initSystemdManager()
     connect(m_systemd, &SystemdManager::creatingJobFailed, this, &SailfishUserManager::onCreatingJobFailed);
 }
 
+/*!
+  \brief Sets current user to user with given \a uid.
+
+  This will end current user session and start user session for \a uid
+  which must be different from current user's \e UID.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorGetUidFailed},
+  \l {D-Bus errors} {SailfishUserManagerErrorBusy} and
+  \l {D-Bus errors} {SailfishUserManagerErrorUserNotFound}.
+ */
 void SailfishUserManager::setCurrentUser(uint uid)
 {
     if (checkCallerUid() == SAILFISH_UNDEFINED_UID)
@@ -682,6 +768,12 @@ void SailfishUserManager::onCreatingJobFailed(SystemdManager::JobList &remaining
     m_switchUser = 0;
 }
 
+/*!
+  \brief Returns current user's \e UID (\e {User IDentifier}).
+
+  Current user is the user that is using the device, i.e. is active on \c
+  seat0.
+ */
 uint SailfishUserManager::currentUser()
 {
     m_exitTimer->start();
@@ -695,6 +787,14 @@ uint SailfishUserManager::currentUser()
     return uid;
 }
 
+/*!
+  \brief Returns \e UUID (\e {Universally Unique IDentifier}) for current
+  user.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorGetUidFailed} and
+  \l {D-Bus errors} {SailfishUserManagerErrorGetUuidFailed}.
+ */
 QString SailfishUserManager::currentUserUuid()
 {
     const auto uid = currentUser();
@@ -704,6 +804,13 @@ QString SailfishUserManager::currentUserUuid()
     return userUuid(uid);
 }
 
+/*!
+  \brief Returns \e UUID (\e {Universally Unique IDentifier}) for user with
+  given \a uid.
+
+  This may return error
+  \l {D-Bus errors} {SailfishUserManagerErrorGetUuidFailed}.
+ */
 QString SailfishUserManager::userUuid(uint uid)
 {
     m_exitTimer->start();
@@ -755,12 +862,24 @@ void SailfishUserManager::updateEnvironment(uint uid)
     }
 }
 
+/*!
+  \brief Returns groups for user with given \a uid.
+ */
 QStringList SailfishUserManager::usersGroups(uint uid)
 {
     m_exitTimer->start();
     return m_lu->groups(uid);
 }
 
+/*!
+  \brief Adds user with given \a uid to \a groups.
+
+  This is used to add permissions for user.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorUserNotFound} and
+  \l {D-Bus errors} {SailfishUserManagerErrorAddToGroupFailed}.
+ */
 void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
 {
     if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
@@ -797,6 +916,15 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
     }
 }
 
+/*!
+  \brief Removes user with \a uid from \a groups.
+
+  This is used to remove permissions from user.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorUserNotFound} and
+  \l {D-Bus errors} {SailfishUserManagerErrorRemoveFromGroupFailed}.
+ */
 void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
 {
     if (!checkAccessRights(SAILFISH_UNDEFINED_UID))
@@ -834,6 +962,16 @@ void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
     }
 }
 
+/*!
+  \brief Enables or disables \e {guest user}.
+
+  Argument \a enable chooses whether \e {guest user} should be enabled or not.
+
+  This may return errors
+  \l {D-Bus errors} {SailfishUserManagerErrorUserAddFailed},
+  \l {D-Bus errors} {SailfishUserManagerErrorUserModifyFailed} and
+  \l {D-Bus errors} {SailfishUserManagerErrorUserRemoveFailed}.
+ */
 void SailfishUserManager::enableGuestUser(bool enable)
 {
     if (!checkAccessRights(SAILFISH_USERMANAGER_GUEST_UID))
@@ -850,3 +988,67 @@ void SailfishUserManager::enableGuestUser(bool enable)
         }
     }
 }
+
+/*!
+  \fn void SailfishUserManager::userAdded(const SailfishUserManagerEntry &user)
+
+  \brief Triggered when a new user has been added.
+
+  User information is contained in \a user.
+
+  \sa SailfishUserManagerEntry
+ */
+
+/*!
+  \fn void SailfishUserManager::userRemoved(uint uid)
+
+  \brief Triggered when user with \a uid has been removed.
+ */
+
+/*!
+  \fn void SailfishUserManager::userModified(uint uid, const QString &new_name)
+
+  \brief Triggered when user's real name has been changed.
+
+  User with \a uid has \a new_name as their new real name.
+ */
+
+/*!
+  \fn void SailfishUserManager::currentUserChanged(uint uid)
+
+  \brief Triggered when current user is changed.
+
+  Current user is set to user with \a uid.
+ */
+
+/*!
+  \fn void SailfishUserManager::currentUserChangeFailed(uint uid)
+
+  \brief Triggered when changing current user fails.
+
+  This follows \l aboutToChangeCurrentUser when changing current user to user
+  with \a uid fails.
+
+  The system may be in unusable state after this signal or it may have
+  recovered successfully. Rebooting device usually recovers this.
+ */
+
+/*!
+  \fn void SailfishUserManager::aboutToChangeCurrentUser(uint uid)
+
+  \brief Triggered when system is about to change current user to user with \a
+  uid.
+
+  This is mainly useful for user interface to show information about switching
+  users. User session is ended a moment later and \l currentUserChanged will
+  follow this signal.
+ */
+
+/*!
+  \fn void SailfishUserManager::guestUserEnabled(bool enabled)
+
+  \brief Triggered when \e {guest user} is enabled or disabled.
+
+  If \a enabled is \c true, \e {guest user} is enabled, otherwise it is
+  disabled.
+ */

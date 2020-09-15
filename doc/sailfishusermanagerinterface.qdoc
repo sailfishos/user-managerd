@@ -1,0 +1,108 @@
+/*!
+  \headerfile <sailfishusermanagerinterface.h>
+
+  \title Sailfish User Manager interface definitions
+
+  \brief Contains defines, structs and serializing operators to use with \l
+  SailfishUserManager D-Bus interface.
+
+  \section1 Constants
+
+  This header has defines for several constants.
+
+  \value SAILFISH_USERMANAGER_DBUS_INTERFACE D-Bus interface of \l
+  SailfishUserManager.
+
+  \value SAILFISH_USERMANAGER_DBUS_OBJECT_PATH D-Bus path of \l
+  SailfishUserManager.
+
+  \value SAILFISH_USERMANAGER_GUEST_HOME Home directory path of \e {guest
+  user}.
+
+  \value SAILFISH_USERMANAGER_GUEST_UID \e UID of \e {guest user}.
+
+  \value SAILFISH_USERMANAGER_MAX_USERS Maximum number of users that can be
+  created. Does not include \e {guest user} but includes \e {device owner}.
+
+  \section1 D-Bus errors
+
+  This header has defines for D-Bus error names that \l SailfishUserManager may
+  return over D-Bus. Note that this does not include all possible errors that
+  can be returned as they may be generic errors from \c QDBusError::ErrorType
+  as well.
+
+  \value SailfishUserManagerErrorBusy The service may not perform the action
+  right now. You may try again later. This may happen if the action is already
+  taking place or if user is currently for example making a call.
+
+  \value SailfishUserManagerErrorHomeCreateFailed The service could not create
+  home directory for the user. This may happen if the directory path is already
+  reserved.
+
+  \value SailfishUserManagerErrorMaxUsersReached Maximum user count has been
+  already reached and no more users can be created. You may create another user
+  after removing an already existing user.
+
+  \value SailfishUserManagerErrorUserAddFailed Creating user failed for some
+  reason.
+
+  \value SailfishUserManagerErrorUserModifyFailed User could not be added to
+  user groups or changing user's name failed.
+
+  \value SailfishUserManagerErrorUserRemoveFailed Removing user failed for some
+  reason.
+
+  \value SailfishUserManagerErrorGetUidFailed Could not determine active user
+  on \c seat0.
+
+  \value SailfishUserManagerErrorGetUuidFailed Could not read \e UUID for the
+  user.
+
+  \value SailfishUserManagerErrorUserNotFound User with given \e UID does not
+  exist.
+
+  \value SailfishUserManagerErrorAddToGroupFailed User could not be added to
+  one or more supplementary groups.
+
+  \value SailfishUserManagerErrorRemoveFromGroupFailed User could not be
+  removed from one or more supplementary groups.
+ */
+
+/*!
+  \variable SAILFISH_USERMANAGER_MAX_USERS
+  \relates <sailfishusermanagerinterface.h>
+
+  \brief The maximum number of users that can be created. \e {Guest user} is
+  not included in this count.
+ */
+
+/*!
+  \class SailfishUserManagerEntry struct
+  \relates <sailfishusermanagerinterface.h>
+  \inmodule Sailfish User Manager Daemon
+
+  \brief The SailfishUserManagerEntry struct describes a user on device.
+
+  This struct is used by \l SailfishUserManager::users to send \e {username},
+  \e {real name} and \e UID (\e {User IDentifier}) over D-Bus.
+ */
+
+/*!
+  \fn inline QDBusArgument &operator<<(QDBusArgument &argument,
+                                       const SailfishUserManagerEntry &user)
+  \relates <sailfishusermanagerinterface.h>
+
+  \brief Operator to serialize \a user into \a argument.
+
+  Returns reference to \a argument.
+ */
+
+/*!
+  \fn inline const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                             SailfishUserManagerEntry &user)
+  \relates <sailfishusermanagerinterface.h>
+
+  \brief Operator to deserialize \a user from \a argument.
+
+  Returns reference to \a argument.
+ */
