@@ -1,6 +1,6 @@
 TEMPLATE = subdirs
 
-SUBDIRS = service src
+SUBDIRS = doc service src
 
 DISTFILES += \
     LICENSE \

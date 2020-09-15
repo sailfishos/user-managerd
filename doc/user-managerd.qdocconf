@@ -1,0 +1,38 @@
+project         = Sailfish User Manager Daemon
+description     = Sailfish User Manager Daemon Reference Documentation
+versionsym      =
+version         = 0.8.0
+url             = https://github.com/sailfishos/user-managerd/
+
+sourcedirs += $$PWD/../src $$PWD/../doc
+headerdirs += $$PWD/../src
+
+outputformats = HTML
+outputdir = $$PWD/../doc/html
+base = file:$$PWD/../doc/html
+tagfile = $$PWD/../doc/html/user-managerd.tags
+
+qhp.projects = SailfishUserManager
+
+qhp.SailfishUserManager.file = user-managerd.qhp
+qhp.SailfishUserManager.namespace = org.sailfishos.usermanager.0.8.0
+qhp.SailfishUserManager.virtualFolder = user-managerd
+qhp.SailfishUserManager.indexTitle = Sailfish User Manager Daemon
+qhp.SailfishUserManager.indexRoot =
+
+qhp.SailfishUserManager.filterAttributes = user-managerd 1.0.0
+qhp.SailfishUserManager.customFilters.SailfishUserManager.name = Sailfish User Manager Daemon 0.8.0
+qhp.SailfishUserManager.customFilters.SailfishUserManager.filterAttributes = user-managerd 0.8.0
+
+qhp.SailfishUserManager.subprojects = overview classes
+
+qhp.SailfishUserManager.subprojects.overview.title = Sailfish User Manager Daemon
+qhp.SailfishUserManager.subprojects.overview.indexTitle = Sailfish User Manager Daemon
+qhp.SailfishUserManager.subprojects.overview.type = manual
+
+qhp.SailfishUserManager.subprojects.classes.title = C++ Classes
+qhp.SailfishUserManager.subprojects.classes.indexTitle = Sailfish MDM C++ Classes
+qhp.SailfishUserManager.subprojects.classes.selectors = class fake:headerfile
+qhp.SailfishUserManager.subprojects.classes.sortPages = true
+
+navigation.homepage = "Sailfish User Manager Daemon"

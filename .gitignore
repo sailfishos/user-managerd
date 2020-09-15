@@ -7,3 +7,5 @@ Makefile
 /src/sailfishusermanager.pc
 /installroot/
 /RPMS/
+/doc/html
+/doc/user-managerd.qch

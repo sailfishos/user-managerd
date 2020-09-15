@@ -1,7 +1,7 @@
 Name: user-managerd
 Version: 0.8.0
 Release: 1
-Summary: Sailfish user manager daemon
+Summary: Sailfish User Manager Daemon
 License: BSD
 Source0: %{name}-%{version}.tar.gz
 URL: https://github.com/sailfishos/user-managerd/
@@ -12,6 +12,7 @@ BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(mce-qt5)
 BuildRequires: sed
+BuildRequires: mer-qdoc-template
 Requires: systemd
 Requires: sailfish-setup >= 0.1.12
 Requires: shadow-utils
@@ -19,10 +20,16 @@ Requires: shadow-utils
 %{summary}.
 
 %package devel
-Summary: Sailfish user manager daemon development files
+Summary: Sailfish User Manager Daemon development files
 Requires: user-managerd
 
 %description devel
+%{summary}.
+
+%package doc
+Summary: Sailfish User Manager Daemon documentation
+
+%description doc
 %{summary}.
 
 %files
@@ -42,6 +49,9 @@ Requires: user-managerd
 %{_prefix}/include/sailfishusermanager
 %{_libdir}/pkgconfig/sailfishusermanager.pc
 
+%files doc
+%{_docdir}/%{name}/
+
 %prep
 %autosetup -n %{name}-%{version}
 
@@ -58,6 +68,9 @@ ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/user@105000.service.w
 mkdir -p %{buildroot}%{_unitdir}/autologin@105000.service.wants/
 ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/autologin@105000.service.wants/
 ln -s ../guest_disable_suw.service %{buildroot}%{_unitdir}/autologin@105000.service.wants/
+
+mkdir -p %{buildroot}/%{_docdir}/%{name}
+cp -R doc/html/* %{buildroot}/%{_docdir}/%{name}/
 
 %pre
 systemctl stop dbus-org.sailfishos.usermanager.service || :
