@@ -18,7 +18,7 @@
 #define SAILFISH_USERMANAGER_GUEST_UID 105000
 #define SAILFISH_USERMANAGER_GUEST_HOME "/home/sailfish_guest"
 
-// Luks has eight slots where one slot is reserved for backup
+// LUKS has eight slots but one slot is reserved for backup
 #define SAILFISH_USERMANAGER_MAX_USERS 7
 
 #define SailfishUserManagerErrorBusy "org.sailfishos.usermanager.Error.Busy"
