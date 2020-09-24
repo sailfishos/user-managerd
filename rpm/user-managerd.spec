@@ -14,7 +14,7 @@ BuildRequires: pkgconfig(mce-qt5)
 BuildRequires: sed
 BuildRequires: mer-qdoc-template
 Requires: systemd
-Requires: sailfish-setup >= 0.1.12
+Requires: sailfish-setup >= 0.3.0
 Requires: shadow-utils
 %description
 %{summary}.
