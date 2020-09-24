@@ -35,8 +35,10 @@
 namespace {
 
 const char *USER_GROUP = "users";
-const char *GROUPS_USER = "USER_GROUPS";
-const auto GROUPS_IDS_FILE = QStringLiteral("/usr/share/sailfish-setup/group.ids");
+const auto GROUP_IDS_FILE = QStringLiteral("/usr/share/sailfish-setup/group_ids.env");
+const char *GROUP_IDS_KEY_PREFIX = "USER_GROUPS";
+const char GROUP_IDS_VALUE_SEPARATOR = '=';
+const char GROUP_IDS_GROUP_SEPARATOR = ',';
 const auto SKEL_DIR = QStringLiteral("/etc/skel");
 const auto USER_HOME = QStringLiteral("/home/%1");
 const auto GUEST_USER = QStringLiteral("sailfish-guest");
@@ -177,7 +179,7 @@ QList<SailfishUserManagerEntry> SailfishUserManager::users()
 
 bool SailfishUserManager::addUserToGroups(const QString &user)
 {
-    QFile file(GROUPS_IDS_FILE);
+    QFile file(GROUP_IDS_FILE);
     if (!file.open(QIODevice::ReadOnly)) {
         qCWarning(lcSUM) << "Failed to open groups file";
         return false;
@@ -185,20 +187,22 @@ bool SailfishUserManager::addUserToGroups(const QString &user)
 
     QByteArray line;
 
+    bool success = true;
     while (!file.atEnd()) {
         line = file.readLine();
-        if (line.startsWith(GROUPS_USER)) {
-            for (const QString& group : line.mid(strlen(GROUPS_USER) + 1).split(',')) {
+        if (line.startsWith(GROUP_IDS_KEY_PREFIX) && line.contains(GROUP_IDS_VALUE_SEPARATOR)) {
+            QByteArray groups = line.mid(line.indexOf(GROUP_IDS_VALUE_SEPARATOR)+1).trimmed();
+            for (const QString& group : groups.split(GROUP_IDS_GROUP_SEPARATOR)) {
                 if (!m_lu->addUserToGroup(user, group.trimmed())) {
-                    file.close();
-                    return false;
+                    qCWarning(lcSUM) << "Failed to add" << user << "to group" << group.trimmed();
+                    success = false;
                 }
             }
         }
     }
     file.close();
 
-    return true;
+    return success;
 }
 
 bool SailfishUserManager::copyDir(const QString &source, const QString &destination, uint uid, uint guid)
