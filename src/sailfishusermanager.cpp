@@ -562,7 +562,7 @@ uid_t SailfishUserManager::checkCallerUid()
         return uid;
     }
 
-    if (info.group() != QStringLiteral("privileged")) {
+    if (info.group() != QStringLiteral("privileged") && !sailfish_access_control_hasgroup(uid, "privileged")) {
         // Non-privileged applications are not allowed
         auto message = QStringLiteral("PID %1 is not in privileged group").arg(pid);
         qCWarning(lcSUM) << "Access denied:" << message;
