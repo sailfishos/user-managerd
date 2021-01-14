@@ -11,11 +11,13 @@ BuildRequires: pkgconfig(libuser)
 BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(mce-qt5)
+BuildRequires: pkgconfig(usb-moded-qt5)
 BuildRequires: sed
 BuildRequires: mer-qdoc-template
 Requires: systemd
 Requires: sailfish-setup >= 0.3.0
 Requires: shadow-utils
+Requires: usb-moded >= 0.86.0+mer52
 %description
 %{summary}.
 

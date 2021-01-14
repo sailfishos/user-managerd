@@ -17,6 +17,7 @@
 #include "sailfishusermanagerinterface.h"
 #include "systemdmanager.h"
 #include <QDBusContext>
+#include <qusbmoded.h>
 
 class QTimer;
 class LibUserHelper;
@@ -67,6 +68,7 @@ public slots:
 
 private slots:
     void exitTimeout();
+    void setUsbMode();
     void onBusyChanged();
     void onUnitJobFinished(SystemdManager::Job &job);
     void onUnitJobFailed(SystemdManager::Job &job, SystemdManager::JobList &remaining);
@@ -79,6 +81,7 @@ private:
     void initSystemdManager();
 
     QTimer *m_exitTimer;
+    QUsbModed m_usbmoded;
     LibUserHelper *m_lu;
     uid_t m_switchUser;
     uid_t m_currentUid;

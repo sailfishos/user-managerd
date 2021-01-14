@@ -21,7 +21,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-PKGCONFIG += libuser glib-2.0 sailfishaccesscontrol libsystemd mce-qt5
+PKGCONFIG += libuser glib-2.0 sailfishaccesscontrol libsystemd mce-qt5 usb-moded-qt5
 
 DBUS_SERVICE_NAME = org.sailfishos.usermanager
 dbus_interface.files = $${DBUS_SERVICE_NAME}.xml

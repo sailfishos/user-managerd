@@ -114,6 +114,9 @@ SailfishUserManager::SailfishUserManager(QObject *parent) :
 
     new UsermanagerAdaptor(this);
 
+    connect(this, &SailfishUserManager::currentUserChanged,
+            this, &SailfishUserManager::setUsbMode);
+
     m_exitTimer = new QTimer(this);
     connect(m_exitTimer, &QTimer::timeout, this, &SailfishUserManager::exitTimeout);
     m_exitTimer->start(QUIT_TIMEOUT);
@@ -917,6 +920,17 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
                 return;
             }
         }
+    }
+}
+
+/*!
+  \brief Sets USB mode to ask on user change if MTP mode is on.
+ */
+void SailfishUserManager::setUsbMode()
+{
+    if (m_usbmoded.currentMode() == QUsbMode::Mode::MTP
+            && !m_usbmoded.setCurrentMode(QUsbMode::Mode::Ask)) {
+        qCWarning(lcSUM) << "Failed to set usb mode";
     }
 }
 
