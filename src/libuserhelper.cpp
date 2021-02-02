@@ -54,7 +54,7 @@ uint LibUserHelper::addGroup(const QString &group, int gid)
     return rv;
 }
 
-bool LibUserHelper::removeGroup(const QString &group)
+bool LibUserHelper::removeGroup(uint gid)
 {
     struct lu_error *error = nullptr;
     struct lu_context *context = lu_start(NULL, lu_user, NULL, NULL, NULL, NULL, &error);
@@ -67,7 +67,7 @@ bool LibUserHelper::removeGroup(const QString &group)
 
     bool rv = true;
     struct lu_ent *ent_group = lu_ent_new();
-    if (lu_group_lookup_name(context, group.toUtf8(), ent_group, &error)) {
+    if (lu_group_lookup_id(context, gid, ent_group, &error)) {
         if (!lu_group_delete(context, ent_group, &error)) {
             qCWarning(lcSUM) << "Group delete failed";
             lu_error_free(&error);
@@ -207,6 +207,8 @@ uint LibUserHelper::addUser(const QString &user, const QString& name, uint uid, 
             if (gid != rv)
                 qCWarning(lcSUM) << "Group id" << gid << "is not the same as user id" << rv;
         } else {
+            // Clean up after failed user add attempt
+            removeGroup(gid);
             qCWarning(lcSUM) << "Adding user failed:" << lu_strerror(error);
             lu_error_free(&error);
         }

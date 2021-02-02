@@ -324,14 +324,9 @@ uint SailfishUserManager::addUser(const QString &name)
     i = 0;
     QString user(cleanName);
     // Append number until it's unused
-    while (getpwnam(user.toUtf8()))
+    while (getpwnam(user.toUtf8()) || getgrnam(user.toUtf8())
+            || QFile::exists(QString(USER_HOME).arg(user))) {
         user = cleanName + QString::number(i++);
-
-    if (QFile::exists(QString(USER_HOME).arg(user))) {
-        auto message = QStringLiteral("Home directory already exists");
-        qCWarning(lcSUM) << message;
-        sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), message);
-        return 0;
     }
 
     return addSailfishUser(user, name);
@@ -341,7 +336,6 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
 {
     uint uid = m_lu->addUser(user, name, userId, home);
     if (!uid) {
-        m_lu->removeGroup(user);
         auto message = QStringLiteral("Adding user failed");
         qCWarning(lcSUM) << message;
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorUserAddFailed), message);
