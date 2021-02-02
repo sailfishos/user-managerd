@@ -56,6 +56,8 @@ const int MAX_USERNAME_LENGTH = 20;
 const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
 const auto USER_REMOVE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/remove.d");
 const quint64 MAXIMUM_QUOTA_LIMIT = 2000000000ULL;
+const auto SAILFISH_GROUP_PREFIX = QStringLiteral("sailfish-");
+const auto ACCOUNT_GROUP_PREFIX = QStringLiteral("account-");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
@@ -90,7 +92,7 @@ QByteArray findHomeDevice()
  */
 
 /*!
-  \brief Constructs SailfishUserManager, for internal user only.
+  \brief Constructs SailfishUserManager, for internal use only.
   \internal
  */
 SailfishUserManager::SailfishUserManager(QObject *parent) :
@@ -120,7 +122,7 @@ SailfishUserManager::SailfishUserManager(QObject *parent) :
 }
 
 /*!
-  \brief Destructs SailfishUserManager, for internal user only.
+  \brief Destructs SailfishUserManager, for internal use only.
   \internal
  */
 SailfishUserManager::~SailfishUserManager()
@@ -878,7 +880,8 @@ QStringList SailfishUserManager::usersGroups(uint uid)
 /*!
   \brief Adds user with given \a uid to \a groups.
 
-  This is used to add permissions for user.
+  This is used to add permissions for user. All groups must begin with
+  \c sailfish- or \c account- prefix.
 
   This may return errors
   \l {D-Bus errors} {SailfishUserManagerErrorUserNotFound} and
@@ -890,6 +893,9 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
         return;
 
     m_exitTimer->start();
+
+    if (!checkIsPermissionGroup(groups))
+        return;
 
     struct passwd *pwd = getpwuid(uid);
     if (!pwd) {
@@ -923,7 +929,8 @@ void SailfishUserManager::addToGroups(uint uid, const QStringList &groups)
 /*!
   \brief Removes user with \a uid from \a groups.
 
-  This is used to remove permissions from user.
+  This is used to remove permissions from user. All groups must begin with
+  \c sailfish- or \c account- prefix.
 
   This may return errors
   \l {D-Bus errors} {SailfishUserManagerErrorUserNotFound} and
@@ -935,6 +942,9 @@ void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
         return;
 
     m_exitTimer->start();
+
+    if (!checkIsPermissionGroup(groups))
+        return;
 
     struct passwd *pwd = getpwuid(uid);
     if (!pwd) {
@@ -964,6 +974,21 @@ void SailfishUserManager::removeFromGroups(uint uid, const QStringList &groups)
             }
         }
     }
+}
+
+bool SailfishUserManager::checkIsPermissionGroup(const QStringList &groups)
+{
+    for (const auto group : groups) {
+        if (!group.startsWith(SAILFISH_GROUP_PREFIX)
+                && !group.startsWith(ACCOUNT_GROUP_PREFIX)) {
+            auto message = QStringLiteral("Only %1 and %2 groups can be managed")
+                .arg(SAILFISH_GROUP_PREFIX).arg(ACCOUNT_GROUP_PREFIX);
+            qCWarning(lcSUM) << message;
+            sendErrorReply(QDBusError::InvalidArgs, message);
+            return false;
+        }
+    }
+    return true;
 }
 
 /*!
