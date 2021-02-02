@@ -75,6 +75,7 @@ private slots:
 private:
     bool checkAccessRights(uint uid_to_modify);
     uid_t checkCallerUid();
+    bool checkIsPermissionGroup(const QStringList &groups);
     void updateEnvironment(uint uid);
     void initSystemdManager();
 
