@@ -55,6 +55,7 @@ const QByteArray LAST_LOGIN_UID_KEY("LAST_LOGIN_UID=");
 const int MAX_USERNAME_LENGTH = 20;
 const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
 const auto USER_REMOVE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/remove.d");
+const auto USER_CREATE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/create.d");
 const quint64 MAXIMUM_QUOTA_LIMIT = 2000000000ULL;
 const auto SAILFISH_GROUP_PREFIX = QStringLiteral("sailfish-");
 const auto ACCOUNT_GROUP_PREFIX = QStringLiteral("account-");
@@ -356,6 +357,14 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
         qCWarning(lcSUM) << message;
         sendErrorReply(QStringLiteral(SailfishUserManagerErrorHomeCreateFailed), message);
         return 0;
+    }
+
+    // Execute user creation scripts
+    QDir creation(USER_CREATE_SCRIPT_DIR);
+    for (const QString &entry : creation.entryList(QDir::Files | QDir::Executable)) {
+        int exitCode = QProcess::execute(USER_CREATE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
+        if (exitCode)
+            qCWarning(lcSUM) << "User creation script" << USER_CREATE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
     }
 
     setUserLimits(uid);
