@@ -18,6 +18,7 @@
 #include <QFile>
 #include <QDir>
 #include <QString>
+#include <QCollator>
 
 #include <errno.h>
 #include <grp.h>
@@ -361,7 +362,18 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
 
     // Execute user creation scripts
     QDir creation(USER_CREATE_SCRIPT_DIR);
-    for (const QString &entry : creation.entryList(QDir::Files | QDir::Executable)) {
+    creation.setSorting(QDir::NoSort);
+    creation.setFilter(QDir::Files | QDir::Executable);
+
+    auto entryList = creation.entryList();
+
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity( Qt::CaseInsensitive );
+
+    std::sort(entryList.begin(), entryList.end(), collator);
+
+    for (const QString &entry : entryList) {
         int exitCode = QProcess::execute(USER_CREATE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
         if (exitCode)
             qCWarning(lcSUM) << "User creation script" << USER_CREATE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
