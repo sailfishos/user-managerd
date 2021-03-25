@@ -334,6 +334,26 @@ uint SailfishUserManager::addUser(const QString &name)
     return addSailfishUser(user, name);
 }
 
+int SailfishUserManager::creationScriptsUserFiles(uint uid)
+{
+    // Execute user creation scripts
+    QDir creation(USER_CREATE_SCRIPT_DIR, "*.sh", QDir::NoSort, QDir::Files | QDir::Executable);
+
+    auto entryList = creation.entryList();
+
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity( Qt::CaseInsensitive );
+
+    std::sort(entryList.begin(), entryList.end(), collator);
+
+    for (const QString &entry : entryList) {
+        int exitCode = QProcess::execute(USER_CREATE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
+        if (exitCode)
+            qCWarning(lcSUM) << "User creation script" << USER_CREATE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
+    }
+}
+
 uint SailfishUserManager::addSailfishUser(const QString &user, const QString &name, uint userId, const QString &home)
 {
     uint uid = m_lu->addUser(user, name, userId, home);
@@ -360,24 +380,7 @@ uint SailfishUserManager::addSailfishUser(const QString &user, const QString &na
         return 0;
     }
 
-    // Execute user creation scripts
-    QDir creation(USER_CREATE_SCRIPT_DIR);
-    creation.setSorting(QDir::NoSort);
-    creation.setFilter(QDir::Files | QDir::Executable);
-
-    auto entryList = creation.entryList();
-
-    QCollator collator;
-    collator.setNumericMode(true);
-    collator.setCaseSensitivity( Qt::CaseInsensitive );
-
-    std::sort(entryList.begin(), entryList.end(), collator);
-
-    for (const QString &entry : entryList) {
-        int exitCode = QProcess::execute(USER_CREATE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
-        if (exitCode)
-            qCWarning(lcSUM) << "User creation script" << USER_CREATE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
-    }
+    creationScriptsUserFiles(uid);
 
     setUserLimits(uid);
 
@@ -400,9 +403,17 @@ int SailfishUserManager::removeUserFiles(uint uid)
         qCWarning(lcSUM) << "Removing user environment directory failed";
 
     // Execute user removal scripts
-    QDir removal(USER_REMOVE_SCRIPT_DIR);
-    for (const QString &entry : removal.entryList(QStringList() << "*.sh",
-                                                  QDir::Files | QDir::Executable, QDir::Name)) {
+    QDir removal(USER_CREATE_SCRIPT_DIR, "*.sh", QDir::NoSort, QDir::Files | QDir::Executable);
+
+    auto entryList = removal.entryList();
+
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity( Qt::CaseInsensitive );
+
+    std::sort(entryList.begin(), entryList.end(), collator);
+
+    for (const QString &entry : entryList) {
         int exitCode = QProcess::execute(USER_REMOVE_SCRIPT_DIR + '/' + entry, QStringList() << QString::number(uid));
         if (exitCode)
             qCWarning(lcSUM) << "User remove script" << USER_REMOVE_SCRIPT_DIR + '/' + entry << "returned:" << exitCode;
