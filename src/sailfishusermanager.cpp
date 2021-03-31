@@ -336,9 +336,9 @@ uint SailfishUserManager::addUser(const QString &name)
 
 void SailfishUserManager::executeScripts(uint uid, const QString &directory)
 {
-    QDir creation(directory, "*.sh", QDir::NoSort, QDir::Files | QDir::Executable);
+    QDir scripts(directory, "*.sh", QDir::NoSort, QDir::Files | QDir::Executable);
 
-    auto entryList = creation.entryList();
+    auto entryList = scripts.entryList();
 
     QCollator collator(QLocale::C);
     collator.setNumericMode(true);
