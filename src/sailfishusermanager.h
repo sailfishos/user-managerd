@@ -38,6 +38,7 @@ private:
     bool removeDir(const QString &dir);
     bool removeHome(uint uid);
     bool copyDir(const QString &source, const QString &destination, uint uid, uint guid);
+    static void executeScripts(uint uid, const QString &directory);
     static int removeUserFiles(uint uid);
     static void setUserLimits(uint uid);
     uint addSailfishUser(const QString &user, const QString &name, uint userId = 0, const QString &home = QString());
