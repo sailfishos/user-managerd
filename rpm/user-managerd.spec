@@ -45,6 +45,7 @@ Summary: Sailfish User Manager Daemon documentation
 %{_sbindir}/userdel_local.sh
 %{_datadir}/user-managerd/remove.d
 %{_datadir}/user-managerd/create.d
+%{_datadir}/user-managerd/pre-switch.d
 
 %files devel
 %{_prefix}/include/sailfishusermanager
@@ -65,6 +66,7 @@ make %{?_smp_mflags}
 
 mkdir -p %{buildroot}%{_datadir}/user-managerd/remove.d
 mkdir -p %{buildroot}%{_datadir}/user-managerd/create.d
+mkdir -p %{buildroot}%{_datadir}/user-managerd/pre-switch.d
 mkdir -p %{buildroot}%{_unitdir}/user@105000.service.wants/
 ln -s ../home-sailfish_guest.mount %{buildroot}%{_unitdir}/user@105000.service.wants/
 mkdir -p %{buildroot}%{_unitdir}/autologin@105000.service.wants/

@@ -57,6 +57,7 @@ const int MAX_USERNAME_LENGTH = 20;
 const auto USER_ENVIRONMENT_DIR = QStringLiteral("/home/.system/var/lib/environment/%1");
 const auto USER_REMOVE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/remove.d");
 const auto USER_CREATE_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/create.d");
+const auto USER_PRE_SWITCH_SCRIPT_DIR = QStringLiteral("/usr/share/user-managerd/pre-switch.d");
 const quint64 MAXIMUM_QUOTA_LIMIT = 2000000000ULL;
 const auto SAILFISH_GROUP_PREFIX = QStringLiteral("sailfish-");
 const auto ACCOUNT_GROUP_PREFIX = QStringLiteral("account-");
@@ -701,6 +702,9 @@ void SailfishUserManager::setCurrentUser(uint uid)
         if (!m_systemd) {
             initSystemdManager();
         }
+
+        executeScripts(m_currentUid, USER_PRE_SWITCH_SCRIPT_DIR);
+
         qCDebug(lcSUM) << "Switching user from" << m_currentUid << "to" << m_switchUser << "now";
         m_systemd->addUnitJobs(SystemdManager::JobList()
                                << SystemdManager::Job::stop(USER_SERVICE.arg(m_currentUid))
