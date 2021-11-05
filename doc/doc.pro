@@ -1,10 +1,10 @@
 TEMPLATE = aux
 
-CONFIG += mer-qdoc-template
-MER_QDOC.project = user-managerd
-MER_QDOC.config = user-managerd.qdocconf
-MER_QDOC.style = offline
-MER_QDOC.path = /usr/share/doc/user-managerd/
+CONFIG += sailfish-qdoc-template
+SAILFISH_QDOC.project = user-managerd
+SAILFISH_QDOC.config = user-managerd.qdocconf
+SAILFISH_QDOC.style = offline
+SAILFISH_QDOC.path = /usr/share/doc/user-managerd/
 
 OTHER_FILES += \
     user-managerd.qdocconf \

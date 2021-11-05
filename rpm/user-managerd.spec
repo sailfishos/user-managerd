@@ -12,7 +12,7 @@ BuildRequires: pkgconfig(sailfishaccesscontrol) >= 0.0.3
 BuildRequires: pkgconfig(libsystemd)
 BuildRequires: pkgconfig(mce-qt5)
 BuildRequires: sed
-BuildRequires: mer-qdoc-template
+BuildRequires: sailfish-qdoc-template
 Requires: systemd
 Requires: sailfish-setup >= 0.3.0
 Requires: shadow-utils
