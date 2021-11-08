@@ -26,6 +26,7 @@
 #include <qmcecallstate.h>
 #include <sailfishaccesscontrol.h>
 #include <sys/mount.h>
+#include <linux/quota.h>
 #include <sys/quota.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
