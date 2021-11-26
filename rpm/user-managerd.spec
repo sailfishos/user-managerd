@@ -34,6 +34,7 @@ Summary: Sailfish User Manager Daemon documentation
 
 %files
 %defattr(-,root,root,-)
+%license LICENSE
 %{_bindir}/%{name}
 %{_unitdir}/dbus-org.sailfishos.usermanager.service
 %{_unitdir}/home-sailfish_guest.mount
