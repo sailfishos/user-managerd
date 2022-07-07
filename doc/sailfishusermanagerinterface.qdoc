@@ -79,7 +79,7 @@
 /*!
   \class SailfishUserManagerEntry struct
   \relates <sailfishusermanagerinterface.h>
-  \inmodule Sailfish User Manager Daemon
+  \inmodule SailfishUserManagerDaemon
 
   \brief The SailfishUserManagerEntry struct describes a user on device.
 

@@ -77,7 +77,7 @@ QByteArray findHomeDevice()
 
 /*!
   \class SailfishUserManager
-  \inmodule Sailfish User Manager Daemon
+  \inmodule SailfishUserManagerDaemon
 
   \brief The SailfishUserManager provides tools for user management.
 
