@@ -1,8 +1,8 @@
-project         = Sailfish User Manager Daemon
+project         = user-managerd
 description     = Sailfish User Manager Daemon Reference Documentation
 versionsym      =
 version         = 0.8.0
-url             = https://github.com/sailfishos/user-managerd/
+url             = $BASE_URL/user-managerd
 
 sourcedirs += $$PWD/../src $$PWD/../doc
 headerdirs += $$PWD/../src
