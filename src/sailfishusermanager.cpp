@@ -47,7 +47,9 @@ const int HOME_MODE = 0700;
 const int QUIT_TIMEOUT = 60 * 1000; // One minute quit timeout
 const int SWITCHING_DELAY = 1000; // One second time before changing currentUser
 const int MAX_RESERVED_UID = 99999;
-const int OWNER_USER_UID = 100000;
+const int MIN_USER_UID = 100000;
+const int OWNER_USER_UID = MIN_USER_UID;
+const int MAX_USER_UID = MIN_USER_UID + 99999;
 const auto DEFAULT_TARGET = QStringLiteral("default.target");
 const auto USER_SERVICE = QStringLiteral("user@%1.service");
 const auto AUTOLOGIN_SERVICE = QStringLiteral("autologin@%1.service");
@@ -64,6 +66,9 @@ const auto ACCOUNT_GROUP_PREFIX = QStringLiteral("account-");
 
 static_assert(SAILFISH_UNDEFINED_UID > MAX_RESERVED_UID,
               "SAILFISH_UNDEFINED_UID must be in the valid range of UIDs");
+
+static_assert((SAILFISH_USERMANAGER_GUEST_UID >= MIN_USER_UID && SAILFISH_USERMANAGER_GUEST_UID <= MAX_USER_UID),
+              "SAILFISH_USERMANAGER_GUEST_UID must be between MIN_USER_UID and MAX_USER_UID");
 
 QByteArray findHomeDevice()
 {
@@ -461,8 +466,10 @@ void SailfishUserManager::setUserLimits(uint uid)
 int SailfishUserManager::removeUserFiles(const char *user)
 {
     struct passwd *pwd = getpwnam(user);
-    if (pwd)
+    if (pwd && pwd->pw_uid >= MIN_USER_UID && pwd->pw_uid <= MAX_USER_UID) {
         return removeUserFiles(pwd->pw_uid);
+    }
+
     return EXIT_FAILURE;
 }
 
@@ -855,7 +862,7 @@ void SailfishUserManager::updateEnvironment(uint uid)
     if (m_currentUid == SAILFISH_USERMANAGER_GUEST_UID)
         removeUserFiles(SAILFISH_USERMANAGER_GUEST_UID);
 
-    if (uid < MAX_RESERVED_UID || uid > MAX_RESERVED_UID + SAILFISH_USERMANAGER_MAX_USERS) {
+    if (uid < OWNER_USER_UID || uid > OWNER_USER_UID + SAILFISH_USERMANAGER_MAX_USERS) {
         // This could be also an assert but it only results in device booting up as wrong user
         qCWarning(lcSUM) << "updateEnvironment: uid" << uid
                          << "is outside allowed range. Not setting LAST_LOGIN_UID.";
