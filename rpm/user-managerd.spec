@@ -42,7 +42,7 @@ Summary: Sailfish User Manager Daemon documentation
 %{_unitdir}/guest_disable_suw.service
 %{_unitdir}/*/guest_disable_suw.service
 %{_datadir}/dbus-1/system-services/*.service
-%{_sysconfdir}/dbus-1/system.d/*.conf
+%{_datadir}/dbus-1/system.d/*.conf
 %{_sbindir}/userdel_local.sh
 %{_datadir}/user-managerd/remove.d
 %{_datadir}/user-managerd/create.d

@@ -18,6 +18,6 @@ service.files = $${DBUS_SERVICE_NAME}.service
 service.path = /usr/share/dbus-1/system-services/
 
 conf.files = $${DBUS_SERVICE_NAME}.conf
-conf.path = /etc/dbus-1/system.d/
+conf.path = /usr/share/dbus-1/system.d/
 
 INSTALLS += systemd service conf
