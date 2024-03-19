@@ -8,5 +8,5 @@ Before=autologin@105000.service user@105000.service
 [Service]
 Type=oneshot
 User=sailfish-guest
-ExecStart=/bin/touch /home/sailfish_guest/.jolla-startupwizard-done
-ExecStart=/bin/touch /home/sailfish_guest/.jolla-startupwizard-usersession-done
+ExecStart=/bin/touch /home/sailfish_guest/.config/jolla-startupwizard-done
+ExecStart=/bin/touch /home/sailfish_guest/.config/jolla-startupwizard-usersession-done
